@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+wheels/
+*.whl
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info
+.installed.cfg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env.local
+
+# Environment secrets — never commit
+.env
+docker/.env
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.coveragerc
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyright/
+
+# Ruff
+.ruff_cache/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# SQLite dev databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Alembic — don't commit auto-generated migration hashes
+# (keep the versions/ directory but ignore the alembic.ini secret overrides)
+alembic.ini.local

@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dai
+      POSTGRES_PASSWORD: ${DAI_DB_PASSWORD:-dai_dev_password}
+      POSTGRES_DB: dai
+    volumes:
+      - dai_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    environment:
+      DAI_DATABASE_URL: postgresql+asyncpg://dai:${DAI_DB_PASSWORD:-dai_dev_password}@postgres:5432/dai
+      DAI_API_KEY: ${DAI_API_KEY:-change-me-before-production}
+      DAI_ENVIRONMENT: ${DAI_ENVIRONMENT:-production}
+      DAI_LOG_LEVEL: ${DAI_LOG_LEVEL:-INFO}
+    ports:
+      - "${DAI_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    command: alembic upgrade head
+    environment:
+      DAI_DATABASE_URL: postgresql+asyncpg://dai:${DAI_DB_PASSWORD:-dai_dev_password}@postgres:5432/dai
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  dai_postgres_data:

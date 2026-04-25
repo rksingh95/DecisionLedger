@@ -1,0 +1,25 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc curl && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e ".[server]"
+
+COPY dai/ ./dai/
+COPY dai_server/ ./dai_server/
+COPY cli/ ./cli/
+COPY alembic.ini .
+
+RUN useradd -m -u 1000 dai && chown -R dai:dai /app
+USER dai
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["uvicorn", "dai_server.main:app", "--host", "0.0.0.0", "--port", "8080", \
+     "--workers", "2", "--log-level", "info"]
