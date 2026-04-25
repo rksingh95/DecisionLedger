@@ -29,9 +29,10 @@ Example::
 """
 
 import asyncio
+import contextlib
 import logging
-from datetime import datetime, timezone
-from typing import Any, Self
+from datetime import UTC, datetime
+from typing import Any, Literal, Self
 
 from dai.client import CommitResult, get_client
 from dai.config import get_config
@@ -89,7 +90,7 @@ class Decision:
         self._exception_type: ExceptionType | None = None
         self._exception_reason_code: str | None = None
         self._metadata: dict[str, str] = {}
-        self._start_time: datetime = datetime.now(timezone.utc)
+        self._start_time: datetime = datetime.now(UTC)
         self._committed: bool = False
 
     @classmethod
@@ -126,8 +127,8 @@ class Decision:
         )
         d._model_version = model_version
         d._deployment_id = deployment_id
-        d._start_time = datetime.now(timezone.utc)
-        return d  # type: ignore[return-value]
+        d._start_time = datetime.now(UTC)
+        return d
 
     def with_policy(
         self,
@@ -149,8 +150,8 @@ class Decision:
         self._policy_id = policy_id
         self._policy_version = policy_version
         self._clauses_applied = clauses_applied or []
-        self._policy_snapshot_at = snapshot_at or datetime.now(timezone.utc)
-        return self  # type: ignore[return-value]
+        self._policy_snapshot_at = snapshot_at or datetime.now(UTC)
+        return self
 
     def with_authority(
         self,
@@ -170,7 +171,7 @@ class Decision:
         self._authorized_scope = authorized_scope
         self._delegation_source = delegation_source
         self._human_oversight_required = human_oversight_required
-        return self  # type: ignore[return-value]
+        return self
 
     def with_override(
         self,
@@ -193,7 +194,7 @@ class Decision:
             if isinstance(justification, str)
             else justification
         )
-        return self  # type: ignore[return-value]
+        return self
 
     def with_context(
         self,
@@ -217,7 +218,7 @@ class Decision:
             if isinstance(context_completeness, str)
             else context_completeness
         )
-        return self  # type: ignore[return-value]
+        return self
 
     def with_outcome(
         self,
@@ -237,7 +238,7 @@ class Decision:
         self._outcome = outcome
         self._confidence = confidence
         self._alternatives_considered = alternatives_considered
-        return self  # type: ignore[return-value]
+        return self
 
     def with_exception(
         self,
@@ -260,7 +261,7 @@ class Decision:
             else exception_type
         )
         self._exception_reason_code = reason_code
-        return self  # type: ignore[return-value]
+        return self
 
     def with_metadata(self, key: str, value: str) -> Self:
         """
@@ -271,7 +272,7 @@ class Decision:
             value: Metadata value (must be a string).
         """
         self._metadata[key] = value
-        return self  # type: ignore[return-value]
+        return self
 
     def _validate(self) -> None:
         """Check all required fields are set. Raise BuilderValidationError if not."""
@@ -316,7 +317,7 @@ class Decision:
             subject_ref=self._subject_ref,
             policy_id=self._policy_id or "",
             policy_version=self._policy_version or "0.0.0",
-            policy_snapshot_at=self._policy_snapshot_at or datetime.now(timezone.utc),
+            policy_snapshot_at=self._policy_snapshot_at or datetime.now(UTC),
             clauses_applied=self._clauses_applied,
             outcome=self._outcome or "",
             confidence=self._confidence or 0.0,
@@ -370,7 +371,7 @@ class Decision:
             CommitResult
         """
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
         except RuntimeError:
             # No running loop — safe to use asyncio.run()
             return asyncio.run(self.commit())
@@ -384,14 +385,14 @@ class Decision:
     # ── Context Manager Support ───────────────────────────────────────────────
 
     async def __aenter__(self) -> Self:
-        return self  # type: ignore[return-value]
+        return self
 
     async def __aexit__(
         self,
         exc_type: type | None,
         exc_val: BaseException | None,
         exc_tb: Any,
-    ) -> bool:
+    ) -> Literal[False]:
         if self._committed:
             return False  # Already committed — do nothing
 
@@ -403,10 +404,9 @@ class Decision:
                 reason_code="unhandled_exception",
             )
             self.with_outcome(outcome="escalated", confidence=0.0)
-            try:
+            import contextlib
+            with contextlib.suppress(Exception):
                 await self.commit()
-            except Exception:
-                pass  # Never suppress original exception for audit failures
             return False  # Re-raise original exception
 
         if exc_type is None:
@@ -450,7 +450,7 @@ class _SyncDecisionContext:
         exc_type: type | None,
         exc_val: BaseException | None,
         exc_tb: Any,
-    ) -> bool:
+    ) -> Literal[False]:
         d = self._decision
         if d._committed:
             return False
@@ -461,10 +461,8 @@ class _SyncDecisionContext:
                 reason_code="unhandled_exception",
             )
             d.with_outcome(outcome="escalated", confidence=0.0)
-            try:
+            with contextlib.suppress(Exception):
                 d.commit_sync()
-            except Exception:
-                pass
             return False
 
         if exc_type is None:

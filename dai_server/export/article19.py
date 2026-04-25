@@ -8,8 +8,8 @@ of the EU AI Act for high-risk AI systems.
 
 
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from dai.models import ChainVerifyResult, DecisionRecord
 
@@ -177,7 +177,7 @@ def generate_article19_export(
         chain_integrity_valid=chain_result.valid,
         chain_integrity_broken_at=chain_result.broken_at,
         policy_versions_used=sorted(policy_versions),
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         ledger_version=LEDGER_VERSION,
         records=records,
     )

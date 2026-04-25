@@ -7,11 +7,10 @@ validates chain continuity, and persists it to the database.
 """
 
 
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dai.hash_chain import GENESIS_HASH, compute_record_hash
@@ -50,7 +49,7 @@ async def ingest_record(
     try:
         expected_hash = compute_record_hash(record.previous_hash, record)
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Hash computation failed: {exc}")
+        raise HTTPException(status_code=422, detail=f"Hash computation failed: {exc}") from exc
 
     if expected_hash != record.record_hash:
         raise HTTPException(
@@ -87,7 +86,7 @@ async def ingest_record(
         previous_hash=record.previous_hash,
         ledger_version=record.ledger_version,
         decision_timestamp=record.decision_timestamp,
-        commit_timestamp=datetime.now(timezone.utc),
+        commit_timestamp=datetime.now(UTC),
         agent_id=record.agent_id,
         agent_type=record.agent_type.value,
         model_version=record.model_version,

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -137,6 +136,45 @@ class TestDecisionBuilder:
             d.with_outcome("approved", 0.9)
         mock_client.commit.assert_called_once()
 
+    def test_context_manager_auto_commits_sync(self, mock_client):
+        with Decision.begin_sync("test-agent", "audit", "ref") as d:
+            d.with_policy("p1", "1.0.0")
+            d.with_authority("scope", "source")
+            d.with_context(["e"], ["d"])
+            d.with_outcome("success", 1.0)
+        assert mock_client.commit.called
+
+    @pytest.mark.asyncio
+    async def test_async_commit_happy_path(self, mock_client):
+        from dai.client import CommitResult
+        mock_client.commit.return_value = CommitResult(success=True, decision_id="async-123", record_hash="a"*64, latency_ms=1.5)
+        mock_client.get_latest_hash.return_value = "0"*64
+
+        d = (Decision.begin("test-agent", "async-test", "ref")
+             .with_policy("p1", "1.0.0")
+             .with_authority("scope", "source")
+             .with_context(["e"], ["d"])
+             .with_outcome("success", 1.0))
+        res = await d.commit()
+
+        assert mock_client.commit.called
+        assert res.success
+        assert res.decision_id == "async-123"
+
+    @pytest.mark.asyncio
+    async def test_async_context_manager(self, mock_client):
+        from dai.client import CommitResult
+        mock_client.commit.return_value = CommitResult(success=True, decision_id="async-ctx-123", record_hash="a"*64, latency_ms=1.5)
+        mock_client.get_latest_hash.return_value = "0"*64
+
+        async with Decision.begin("test-agent", "audit", "ref") as d:
+            d.with_policy("p1", "1.0.0")
+            d.with_authority("scope", "source")
+            d.with_context(["e"], ["d"])
+            d.with_outcome("success", 1.0)
+
+        assert mock_client.commit.called
+
     @pytest.mark.asyncio
     async def test_context_manager_exception_records_fallback(self, mock_client):
         with pytest.raises(ValueError):
@@ -150,3 +188,18 @@ class TestDecisionBuilder:
         committed_record = mock_client.commit.call_args[0][0]
         assert committed_record.exception_applied is True
         assert committed_record.outcome == "escalated"
+
+    def test_context_manager_exception_records_fallback_sync(self, mock_client):
+        from dai.client import CommitResult
+        mock_client.commit.return_value = CommitResult(
+            success=True, decision_id="ctx-123", record_hash="a"*64, latency_ms=1.5
+        )
+        mock_client.get_latest_hash.return_value = "0"*64
+
+        with pytest.raises(ValueError), Decision.begin_sync("test-agent", "audit", "ref") as d:
+                d.with_policy("p", "1.0.0")
+                d.with_authority("scope", "source")
+                d.with_context(["e"], ["d"])
+                raise ValueError("agent crashed")
+
+        assert mock_client.commit.called

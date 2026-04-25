@@ -66,3 +66,8 @@ dmypy.json
 # Alembic — don't commit auto-generated migration hashes
 # (keep the versions/ directory but ignore the alembic.ini secret overrides)
 alembic.ini.local
+
+# Local scripts and prompt files
+DAI_SDK_COPILOT_PROMPTS.md
+dai_medium_gpt.md
+push_to_github.sh

@@ -34,10 +34,11 @@ The decorator:
 import asyncio
 import functools
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from dai.builder import Decision
-from dai.models import ContextCompleteness, ExceptionType
+from dai.models import ExceptionType
 
 logger = logging.getLogger("dai.decorators")
 
@@ -50,11 +51,11 @@ def log_decision(
     *,
     authorized_scope: str = "decorated_function",
     delegation_source: str = "decorator",
-    extract_subject: Callable[[tuple, dict], str],
-    extract_outcome: Callable[[Any], dict],
-    extract_context: Callable[[tuple, dict], dict] | None = None,
+    extract_subject: Callable[[tuple[Any, ...], dict[str, Any]], str],
+    extract_outcome: Callable[[Any], dict[str, Any]],
+    extract_context: Callable[[tuple[Any, ...], dict[str, Any]], dict[str, Any]] | None = None,
     on_error: str = "log_and_continue",
-) -> Callable:
+) -> Callable[..., Any]:
     """
     Decorator that automatically records a DAI decision for the decorated function.
 
@@ -77,7 +78,7 @@ def log_decision(
         on_error: Error policy string ('log_and_continue' or 'raise_exception').
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             return await _execute(func, args, kwargs, is_async=True)
@@ -87,7 +88,7 @@ def log_decision(
             return asyncio.run(_execute(func, args, kwargs, is_async=False))
 
         async def _execute(
-            fn: Callable, args: tuple, kwargs: dict, is_async: bool
+            fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any], is_async: bool
         ) -> Any:
             try:
                 subject_ref = extract_subject(args, kwargs)

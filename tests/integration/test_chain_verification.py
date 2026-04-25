@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-import pytest
-
-from dai.client import SQLiteDAIClient, reset_client_cache
-from dai.config import reset_config
+from dai.client import SQLiteDAIClient
 from dai.hash_chain import GENESIS_HASH, prepare_record_for_commit
 from dai.models import AgentType, ContextCompleteness, DecisionRecordCreate
 
 
 def _make_create(subject_ref: str = "claim:001", **kwargs) -> DecisionRecordCreate:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     defaults = dict(
         agent_id="test-agent",
         agent_type=AgentType.autonomous,
@@ -66,15 +63,17 @@ class TestChainVerification:
         client = SQLiteDAIClient(str(tmp_path / "test.db"))
         await _build_chain(client, 10)
 
-        from dai.models import QueryFilter
         from dai.hash_chain import verify_chain
+        from dai.models import QueryFilter
         records = await client.query(QueryFilter(limit=100))
         result = verify_chain(records)
         assert result.valid is True
         assert result.total_records == 10
 
     async def test_tamper_detected(self, tmp_path):
-        import json, aiosqlite
+        import json
+
+        import aiosqlite
         db_path = str(tmp_path / "test.db")
         client = SQLiteDAIClient(db_path)
         records = await _build_chain(client, 5)
@@ -92,8 +91,8 @@ class TestChainVerification:
             )
             await db.commit()
 
-        from dai.models import QueryFilter
         from dai.hash_chain import verify_chain
+        from dai.models import QueryFilter
         fetched = await client.query(QueryFilter(limit=100))
         result = verify_chain(fetched)
         assert result.valid is False

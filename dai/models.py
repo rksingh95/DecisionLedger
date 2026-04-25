@@ -23,8 +23,8 @@ to the previous record via SHA-256 hash chaining.
 
 import json
 import re
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import datetime
+from enum import StrEnum
 from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -45,7 +45,7 @@ HEX64_RE: re.Pattern[str] = re.compile(r"^[0-9a-f]{64}$")
 # ─── Enums ────────────────────────────────────────────────────────────────────
 
 
-class AgentType(str, Enum):
+class AgentType(StrEnum):
     """Classification of the AI agent's level of autonomy."""
 
     autonomous = "autonomous"
@@ -58,7 +58,7 @@ class AgentType(str, Enum):
     """Human approves every decision before it is enacted."""
 
 
-class ContextCompleteness(str, Enum):
+class ContextCompleteness(StrEnum):
     """Indicates whether the agent had all context it needed to decide."""
 
     full = "full"
@@ -71,7 +71,7 @@ class ContextCompleteness(str, Enum):
     """Significant context was missing; decision made under uncertainty."""
 
 
-class ExceptionType(str, Enum):
+class ExceptionType(StrEnum):
     """Classification of why a decision deviated from the standard path."""
 
     conservative_fallback = "conservative_fallback"
@@ -87,7 +87,7 @@ class ExceptionType(str, Enum):
     """A metric threshold was breached, triggering exception handling."""
 
 
-class DecisionOutcome(str, Enum):
+class DecisionOutcome(StrEnum):
     """Base outcome enum. Domain-specific outcomes extend via metadata."""
 
     approved = "approved"
@@ -97,7 +97,7 @@ class DecisionOutcome(str, Enum):
     deferred = "deferred"
 
 
-class LedgerVersion(str, Enum):
+class LedgerVersion(StrEnum):
     """Current ledger schema version."""
 
     v0_1_0 = "0.1.0"

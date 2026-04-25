@@ -48,9 +48,9 @@ Example — constructing and verifying a two-record chain::
 """
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-import uuid6  # type: ignore[import]
+import uuid6
 
 from dai.exceptions import HashChainError
 from dai.models import (
@@ -112,7 +112,7 @@ def compute_record_hash(previous_hash: str, record: DecisionRecord) -> str:
         )
 
     canonical_json = record.to_canonical_json()
-    payload = f"{previous_hash}:{canonical_json}".encode("utf-8")
+    payload = f"{previous_hash}:{canonical_json}".encode()
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -163,7 +163,7 @@ def verify_chain(records: list[DecisionRecord]) -> ChainVerifyResult:
         ChainVerifyResult with valid=True if chain is intact, or valid=False
         with broken_at set to the decision_id of the first tampered record.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if not records:
         return ChainVerifyResult(
@@ -251,7 +251,7 @@ def prepare_record_for_commit(
     Raises:
         HashChainError: If previous_hash is invalid.
     """
-    now = now_override or datetime.now(timezone.utc)
+    now = now_override or datetime.now(UTC)
     uid = decision_id or str(uuid6.uuid7())
     decision_timestamp = create_request.decision_timestamp or now
 

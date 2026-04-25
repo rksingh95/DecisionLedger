@@ -16,14 +16,13 @@ import io
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
-from rich import print as rprint
 
 app = typer.Typer(
     name="dai",
@@ -52,11 +51,11 @@ def _parse_dt(value: str) -> datetime:
         else:
             dt = datetime.fromisoformat(f"{value}T00:00:00+00:00")
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return dt
-    except ValueError:
+    except ValueError as exc:
         err_console.print(f"[red]Invalid datetime: {value!r}. Use ISO8601 format.[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
 
 # ── dai verify ────────────────────────────────────────────────────────────────
@@ -116,7 +115,7 @@ def verify(
 
     except httpx.HTTPError as e:
         err_console.print(f"[red]Server error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 # ── dai query ─────────────────────────────────────────────────────────────────
@@ -211,7 +210,7 @@ def query(
 
     except httpx.HTTPError as e:
         err_console.print(f"[red]Server error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 # ── dai export ────────────────────────────────────────────────────────────────
@@ -262,7 +261,7 @@ def export(
             sys.stdout.write("\n")
     except httpx.HTTPError as e:
         err_console.print(f"[red]Server error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 # ── dai status ────────────────────────────────────────────────────────────────
@@ -297,14 +296,14 @@ def status(
         table.add_row("Version", info["health"].get("version", "?"))
         table.add_row("Latest hash", info["latest_hash"][:16] + "…" if info["latest_hash"] else "—")
         console.print(table)
-    except httpx.HTTPError:
+    except httpx.HTTPError as e:
         table = Table(title="DAI Server Status")
         table.add_column("Field", style="bold")
         table.add_column("Value")
         table.add_row("Server", ep)
         table.add_row("Status", "[red]✗ Unreachable[/red]")
         console.print(table)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 # ── dai init ──────────────────────────────────────────────────────────────────

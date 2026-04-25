@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from dai.models import GENESIS_HASH, DecisionRecord, QueryFilter
+from dai.models import GENESIS_HASH, DecisionRecord
 from dai_server.db.models import DecisionORM
 from dai_server.db.session import get_db
 

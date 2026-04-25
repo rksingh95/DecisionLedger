@@ -32,8 +32,8 @@ Usage::
 import logging
 import os
 import threading
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger("dai.config")
@@ -42,7 +42,7 @@ logger = logging.getLogger("dai.config")
 # ─── Enums ────────────────────────────────────────────────────────────────────
 
 
-class BackendType(str, Enum):
+class BackendType(StrEnum):
     """Which storage backend the SDK uses to commit decision records."""
 
     http = "http"
@@ -55,7 +55,7 @@ class BackendType(str, Enum):
     """Silently discard all records. Useful for CI/testing where records are irrelevant."""
 
 
-class ErrorPolicy(str, Enum):
+class ErrorPolicy(StrEnum):
     """How the SDK handles errors — follows the non-blocking design principle."""
 
     raise_exception = "raise_exception"
@@ -177,12 +177,12 @@ def _coerce_enum(enum_cls: type, value: Any, field_name: str) -> Any:
         return value
     try:
         return enum_cls(value)
-    except ValueError:
-        valid = [e.value for e in enum_cls]
+    except ValueError as exc:
+        valid = [e.value for e in enum_cls]  # type: ignore[attr-defined]
         raise ValueError(
             f"Invalid value {value!r} for {field_name}. "
             f"Valid options: {valid}"
-        )
+        ) from exc
 
 
 # ─── Global Config State ──────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ def configure(**kwargs: Any) -> None:
         kwargs["on_error"] = _coerce_enum(ErrorPolicy, kwargs["on_error"], "on_error")
 
     # Validate field names
-    valid_fields = {f.name for f in DAIConfig.__dataclass_fields__.values()}  # type: ignore[attr-defined]
+    valid_fields = {f.name for f in DAIConfig.__dataclass_fields__.values()}
     invalid_keys = set(kwargs) - valid_fields
     if invalid_keys:
         raise ValueError(f"Unknown DAIConfig fields: {invalid_keys}")

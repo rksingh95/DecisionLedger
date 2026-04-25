@@ -8,21 +8,31 @@ Starts the DAI decision ledger server.
 """
 
 
+import json
 import os
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from datetime import UTC
+from typing import Any
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
+from fastapi import Query as FQuery
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from dai_server.db.session import close_engine, create_tables
+from dai.hash_chain import verify_chain
+from dai.models import Article19ExportRequest, DecisionRecord
+from dai_server.db.models import DecisionORM
+from dai_server.db.session import close_engine, create_tables, get_db
+from dai_server.export.article19 import generate_article19_export
 from dai_server.routes import ingest, query, verify
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Startup and shutdown lifecycle."""
     await create_tables()
     yield
@@ -66,8 +76,6 @@ async def add_process_time_header(request: Request, call_next: Any) -> Response:
 
 # ── Prometheus Metrics ─────────────────────────────────────────────────────────
 
-from prometheus_fastapi_instrumentator import Instrumentator
-
 instrumentator = Instrumentator(
     should_group_status_codes=False,
     should_ignore_untemplated=True,
@@ -94,7 +102,7 @@ async def api_key_middleware(request: Request, call_next: Any) -> Response:
             status_code=401,
             content={"detail": "Invalid or missing API key. Use: Authorization: Bearer <key>"},
         )
-        
+
     token = auth_header[7:]
 
     # Fallback to the environment bootstrap key
@@ -106,23 +114,25 @@ async def api_key_middleware(request: Request, call_next: Any) -> Response:
 
     # Database API Key lookup
     import hashlib
+
     from sqlalchemy import select
+
     from dai_server.db.models import ApiKeyORM
     from dai_server.db.session import get_session_factory
-    
+
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    
+
     factory = get_session_factory()
     async with factory() as session:
         result = await session.execute(select(ApiKeyORM).where(ApiKeyORM.key_hash == token_hash))
         api_key = result.scalar_one_or_none()
-        
+
     if not api_key:
         return JSONResponse(
             status_code=401,
             content={"detail": "Invalid API key."},
         )
-        
+
     request.state.agent_id = api_key.agent_id
     request.state.roles = api_key.roles
 
@@ -143,18 +153,6 @@ async def health() -> dict:
 
 
 # ── Article 19 Export Route ───────────────────────────────────────────────────
-
-from fastapi import Depends, Query as FQuery
-from fastapi.responses import PlainTextResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-import json
-
-from dai.models import Article19ExportRequest, DecisionRecord
-from dai.hash_chain import verify_chain
-from dai_server.db.models import DecisionORM
-from dai_server.db.session import get_db
-from dai_server.export.article19 import generate_article19_export
-
 
 @app.post("/export/article19", tags=["Export"])
 async def export_article19(
@@ -189,12 +187,12 @@ async def export_article19(
     if request.include_chain_proof:
         chain_result = verify_chain(records)
     else:
-        from datetime import timezone
+
         from dai.models import ChainVerifyResult
         chain_result = ChainVerifyResult(
             valid=True,
             total_records=len(records),
-            verified_at=__import__("datetime").datetime.now(timezone.utc),
+            verified_at=__import__("datetime").datetime.now(UTC),
             message="Chain proof not requested.",
         )
 
@@ -208,4 +206,3 @@ async def export_article19(
 
 
 # Required for middleware type hints
-from typing import Any, Callable

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -11,10 +11,8 @@ from dai.models import (
     GENESIS_HASH,
     LEDGER_VERSION,
     AgentType,
-    ChainVerifyResult,
     ContextCompleteness,
     DecisionRecord,
-    DecisionRecordCreate,
     ExceptionType,
     QueryFilter,
 )
@@ -22,7 +20,7 @@ from dai.models import (
 
 def _make_record(**kwargs) -> DecisionRecord:
     """Helper to build a minimal valid DecisionRecord."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     defaults = dict(
         decision_id="01234567-89ab-7000-8000-000000000001",
         record_hash="a" * 64,
@@ -122,7 +120,8 @@ class TestDecisionRecordValidation:
 
     def test_frozen_model_cannot_be_mutated(self):
         r = _make_record()
-        with pytest.raises(Exception):
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
             r.outcome = "denied"  # type: ignore
 
 

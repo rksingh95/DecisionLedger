@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from dai.decorators import log_decision
-from dai.models import ExceptionType
 
 
 @pytest.fixture
@@ -90,3 +89,76 @@ class TestLogDecisionDecorator:
 
         result = await my_func()
         assert result == {"key": "value", "nested": [1, 2, 3]}
+
+    @pytest.mark.asyncio
+    async def test_extract_subject_error(self, mock_client):
+        def bad_subject(args, kwargs):
+            raise ValueError("bad subject extraction")
+
+        @log_decision(
+            agent_id="test-agent", decision_type="test",
+            policy_id="p", policy_version="1.0.0",
+            extract_subject=bad_subject,
+            extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0}
+        )
+        async def my_func():
+            return "foo"
+
+        await my_func()
+        assert mock_client.commit.called
+        assert mock_client.commit.call_args[0][0].subject_ref == "unknown"
+
+    @pytest.mark.asyncio
+    async def test_extract_context_error(self, mock_client):
+        def bad_context(args, kwargs):
+            raise ValueError("bad context extraction")
+
+        @log_decision(
+            agent_id="test-agent", decision_type="test",
+            policy_id="p", policy_version="1.0.0",
+            extract_subject=lambda a, k: "sub",
+            extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0},
+            extract_context=bad_context
+        )
+        async def my_func():
+            return "foo"
+
+        await my_func()
+        assert mock_client.commit.called
+        assert mock_client.commit.call_args[0][0].evidence_refs == ["function_call"]
+
+    @pytest.mark.asyncio
+    @patch("dai.decorators.Decision.commit")
+    async def test_commit_error_raise_exception(self, mock_decision_commit, mock_client):
+        mock_decision_commit.side_effect = RuntimeError("commit failed")
+
+        @log_decision(
+            agent_id="test-agent", decision_type="test",
+            policy_id="p", policy_version="1.0.0",
+            extract_subject=lambda a, k: "sub",
+            extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0},
+            on_error="raise_exception"
+        )
+        async def my_func():
+            return "foo"
+
+        with pytest.raises(RuntimeError, match="commit failed"):
+            await my_func()
+
+    @pytest.mark.asyncio
+    @patch("dai.decorators.Decision.commit")
+    async def test_exception_commit_error_raise_exception(self, mock_decision_commit, mock_client):
+        mock_decision_commit.side_effect = RuntimeError("commit failed")
+
+        @log_decision(
+            agent_id="test-agent", decision_type="test",
+            policy_id="p", policy_version="1.0.0",
+            extract_subject=lambda a, k: "sub",
+            extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0},
+            on_error="raise_exception"
+        )
+        async def my_func():
+            raise ValueError("func failed")
+
+        with pytest.raises(RuntimeError, match="commit failed"):
+            await my_func()

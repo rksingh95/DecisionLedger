@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime
 
 from dai.client import SQLiteDAIClient
 from dai.hash_chain import GENESIS_HASH, prepare_record_for_commit
@@ -12,7 +10,7 @@ from dai.models import AgentType, ContextCompleteness, DecisionRecordCreate, Que
 
 
 def _make_create(**kwargs) -> DecisionRecordCreate:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     defaults = dict(
         agent_id="agent-a",
         agent_type=AgentType.autonomous,

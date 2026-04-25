@@ -34,15 +34,14 @@ logger = logging.getLogger("dai.integrations.langchain")
 
 try:
     from langchain_core.callbacks.base import BaseCallbackHandler
-    from langchain_core.agents import AgentAction, AgentFinish
     _LANGCHAIN_AVAILABLE = True
 except ImportError:
     # Graceful fallback — DAICallbackHandler still importable but non-functional
-    BaseCallbackHandler = object  # type: ignore[misc, assignment]
+    BaseCallbackHandler = object
     _LANGCHAIN_AVAILABLE = False
 
 
-class DAICallbackHandler(BaseCallbackHandler):
+class DAICallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
     """
     LangChain callback handler that records DAI decision records.
 
@@ -113,7 +112,7 @@ class DAICallbackHandler(BaseCallbackHandler):
         if not _LANGCHAIN_AVAILABLE:
             return
         try:
-            d = self._get_or_create_decision(run_id)
+            self._get_or_create_decision(run_id)
             key = self._get_run_key(run_id)
             tool_ref = f"{self.evidence_prefix}:tool:{getattr(action, 'tool', 'unknown')}"
             self._run_id_to_evidence[key].append(tool_ref)

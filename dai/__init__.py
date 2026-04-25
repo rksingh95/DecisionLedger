@@ -35,7 +35,24 @@ Quick start:
     print(f"Decision recorded: {result.decision_id}")
 """
 
+from dai.builder import Decision
+from dai.client import CommitResult, get_client
 from dai.config import DAIConfig, configure, get_config, reset_config
+from dai.exceptions import (
+    AlreadyCommittedError,
+    BuilderValidationError,
+    DAIException,
+    HashChainError,
+)
+from dai.hash_chain import (
+    compute_record_hash,
+    prepare_record_for_commit,
+    verify_chain,
+    verify_record,
+)
+from dai.models import (
+    GENESIS_HASH as GENESIS_HASH,
+)
 from dai.models import (
     AgentType,
     Article19ExportRequest,
@@ -47,21 +64,6 @@ from dai.models import (
     LedgerVersion,
     QueryFilter,
 )
-from dai.builder import Decision
-from dai.exceptions import (
-    AlreadyCommittedError,
-    BuilderValidationError,
-    DAIException,
-    HashChainError,
-)
-from dai.hash_chain import (
-    GENESIS_HASH,
-    compute_record_hash,
-    prepare_record_for_commit,
-    verify_chain,
-    verify_record,
-)
-from dai.client import CommitResult, get_client
 
 __all__ = [
     # Configuration

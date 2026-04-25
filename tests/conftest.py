@@ -7,15 +7,12 @@ Shared pytest fixtures for unit and integration tests.
 
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from datetime import UTC, datetime
 
 import pytest
-import pytest_asyncio
 
-from dai.config import BackendType, ErrorPolicy, reset_config
 from dai.client import reset_client_cache
+from dai.config import reset_config
 from dai.models import (
     AgentType,
     ContextCompleteness,
@@ -49,7 +46,7 @@ def dai_config_sqlite(tmp_path):
 @pytest.fixture
 def sample_decision_create() -> DecisionRecordCreate:
     """Realistic insurance claims triage DecisionRecordCreate."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return DecisionRecordCreate(
         agent_id="claims-agent-01",
         agent_type=AgentType.autonomous,

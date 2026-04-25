@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
+from dai.exceptions import HashChainError
 from dai.hash_chain import (
     GENESIS_HASH,
     compute_record_hash,
@@ -14,18 +15,14 @@ from dai.hash_chain import (
     verify_record,
 )
 from dai.models import (
-    LEDGER_VERSION,
     AgentType,
-    ChainVerifyResult,
     ContextCompleteness,
-    DecisionRecord,
     DecisionRecordCreate,
 )
-from dai.exceptions import HashChainError
 
 
 def _make_create(**kwargs) -> DecisionRecordCreate:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     defaults = dict(
         agent_id="test-agent",
         agent_type=AgentType.autonomous,

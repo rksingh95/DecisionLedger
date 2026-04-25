@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-import random
-
-import pytest
+from datetime import UTC, datetime
 
 from dai.client import SQLiteDAIClient
-from dai.hash_chain import GENESIS_HASH, prepare_record_for_commit
-from dai.hash_chain import verify_chain
+from dai.hash_chain import GENESIS_HASH, prepare_record_for_commit, verify_chain
 from dai.models import AgentType, ContextCompleteness, DecisionRecordCreate, ExceptionType
 from dai_server.export.article19 import generate_article19_export
 
@@ -22,7 +18,7 @@ def _make_create(
     override: bool = False,
     subject_ref: str = "claim:001",
 ) -> DecisionRecordCreate:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return DecisionRecordCreate(
         agent_id=agent_id,
         agent_type=AgentType.autonomous,
@@ -109,7 +105,9 @@ class TestArticle19Export:
         assert "VERIFIED" in report
 
     async def test_article19_export_with_broken_chain(self, tmp_path):
-        import json, aiosqlite
+        import json
+
+        import aiosqlite
         db_path = str(tmp_path / "test.db")
         client = SQLiteDAIClient(db_path)
         prev = GENESIS_HASH
