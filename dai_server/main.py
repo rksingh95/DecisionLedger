@@ -64,6 +64,21 @@ async def add_process_time_header(request: Request, call_next: Any) -> Response:
     return response
 
 
+# ── Prometheus Metrics ─────────────────────────────────────────────────────────
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
+instrumentator = Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=[".*admin.*", "/metrics", "/health"],
+    inprogress_name="dai_inprogress",
+    inprogress_labels=True,
+)
+instrumentator.instrument(app).expose(app)
+
+
 # ── API Key Authentication Middleware ─────────────────────────────────────────
 
 _UNPROTECTED_PATHS = {"/health", "/docs", "/redoc", "/openapi.json"}
