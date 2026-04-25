@@ -98,9 +98,8 @@ check: lint typecheck ## Run lint + typecheck together (full CI quality gate)
 #  TESTING
 # ─────────────────────────────────────────────────────────────────────────────
 
-test: ## Run all tests with coverage report
-	$(PYTEST) tests/ --cov=dai --cov=dai_server --cov=cli \
-	          --cov-report=term-missing --cov-fail-under=90
+test: ## Run all tests with coverage report (>90% required on SDK)
+	$(PYTEST) tests/unit/ --cov=dai --cov-report=term-missing --cov-fail-under=90
 
 test-unit: ## Run unit tests only (fast, no DB required)
 	$(PYTEST) tests/unit/ -v

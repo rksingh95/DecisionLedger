@@ -203,3 +203,103 @@ class TestDecisionBuilder:
                 raise ValueError("agent crashed")
 
         assert mock_client.commit.called
+
+    # ── _validate missing-field individual branches ────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_validate_missing_agent_id(self, mock_client):
+        d = Decision()
+        d._decision_type = "t"
+        d._subject_ref = "r"
+        d._policy_id = "p"
+        d._policy_version = "1.0.0"
+        d._authorized_scope = "s"
+        d._delegation_source = "ds"
+        d._outcome = "approved"
+        d._evidence_refs = []
+        d._data_sources_accessed = []
+        with pytest.raises(BuilderValidationError) as exc:
+            await d.commit()
+        assert "agent_id" in exc.value.missing_fields
+
+    @pytest.mark.asyncio
+    async def test_validate_missing_multiple_fields(self, mock_client):
+        d = Decision()  # nothing set
+        with pytest.raises(BuilderValidationError) as exc:
+            await d.commit()
+        # several fields should be missing
+        assert len(exc.value.missing_fields) > 1
+
+    @pytest.mark.asyncio
+    async def test_validate_missing_evidence_refs(self, mock_client):
+        d = (
+            Decision.begin("agent", "test", "ref")
+            .with_policy("p", "1.0.0")
+            .with_authority("scope", "source")
+            .with_outcome("approved", 0.9)
+            # no with_context → evidence_refs is None
+        )
+        with pytest.raises(BuilderValidationError) as exc:
+            await d.commit()
+        assert "evidence_refs" in exc.value.missing_fields
+
+    # ── commit — unexpected exception path ─────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_commit_unexpected_error_log_and_continue(self, mock_client):
+        """Unexpected exception during commit with log_and_continue returns failure."""
+        from dai.config import configure, reset_config
+        configure(on_error="log_and_continue")
+        mock_client.get_latest_hash.side_effect = RuntimeError("unexpected")
+
+        d = _full_decision()
+        res = await d.commit()
+        assert not res.success
+        assert "unexpected" in (res.error or "")
+        reset_config()
+
+    @pytest.mark.asyncio
+    async def test_commit_unexpected_error_raise_exception(self, mock_client):
+        """Unexpected exception during commit with raise_exception re-raises."""
+        from dai.config import configure, reset_config
+        configure(on_error="raise_exception")
+        mock_client.get_latest_hash.side_effect = RuntimeError("fatal")
+
+        d = _full_decision()
+        with pytest.raises(RuntimeError, match="fatal"):
+            await d.commit()
+        reset_config()
+
+    # ── commit_sync — thread-pool path (loop already running) ─────────────────
+
+    @pytest.mark.asyncio
+    async def test_commit_sync_inside_running_loop(self, mock_client):
+        """commit_sync falls back to ThreadPoolExecutor when a loop is already running."""
+        from dai.client import CommitResult
+        mock_client.commit.return_value = CommitResult(
+            success=True, decision_id="sync-thread-id", record_hash="a" * 64, latency_ms=1.0,
+        )
+        mock_client.get_latest_hash.return_value = "0" * 64
+
+        d = _full_decision()
+        # Inside an async test we ARE in a running loop → thread-pool branch
+        result = d.commit_sync()
+        assert result.success
+        assert result.decision_id == "sync-thread-id"
+
+    # ── async __aexit__ — already committed branch ─────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_async_context_manager_already_committed(self, mock_client):
+        """If a Decision was manually committed before __aexit__, no double-commit."""
+        d = _full_decision()
+        await d.commit()
+        assert d._committed
+
+        # Simulate entering and exiting the async context manager
+        await d.__aenter__()
+        result = await d.__aexit__(None, None, None)
+        # commit should only have been called once
+        assert mock_client.commit.call_count == 1
+        assert result is False
+
