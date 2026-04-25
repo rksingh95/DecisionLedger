@@ -73,3 +73,22 @@ class DecisionORM(Base):
             f"outcome={self.outcome!r} "
             f"agent_id={self.agent_id!r}>"
         )
+
+
+class ApiKeyORM(Base):
+    """
+    API Keys for authenticating AI agents and reading the ledger.
+    """
+
+    __tablename__ = "api_keys"
+
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    roles: Mapped[str] = mapped_column(String(255), nullable=False, default="write")
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    def __repr__(self) -> str:
+        return f"<ApiKeyORM agent_id={self.agent_id!r} roles={self.roles!r}>"
+

@@ -88,14 +88,44 @@ async def api_key_middleware(request: Request, call_next: Any) -> Response:
     if request.url.path in _UNPROTECTED_PATHS:
         return await call_next(request)
 
-    expected_key = os.environ.get("DAI_API_KEY", "")
     auth_header = request.headers.get("Authorization", "")
-
-    if not auth_header.startswith("Bearer ") or auth_header[7:] != expected_key:
+    if not auth_header.startswith("Bearer "):
         return JSONResponse(
             status_code=401,
             content={"detail": "Invalid or missing API key. Use: Authorization: Bearer <key>"},
         )
+        
+    token = auth_header[7:]
+
+    # Fallback to the environment bootstrap key
+    env_key = os.environ.get("DAI_API_KEY")
+    if env_key and token == env_key:
+        request.state.agent_id = "bootstrap_admin"
+        request.state.roles = "admin,read,write"
+        return await call_next(request)
+
+    # Database API Key lookup
+    import hashlib
+    from sqlalchemy import select
+    from dai_server.db.models import ApiKeyORM
+    from dai_server.db.session import get_session_factory
+    
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(select(ApiKeyORM).where(ApiKeyORM.key_hash == token_hash))
+        api_key = result.scalar_one_or_none()
+        
+    if not api_key:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Invalid API key."},
+        )
+        
+    request.state.agent_id = api_key.agent_id
+    request.state.roles = api_key.roles
+
     return await call_next(request)
 
 
