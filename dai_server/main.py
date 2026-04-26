@@ -33,6 +33,7 @@ from dai.models import Article19ExportRequest, DecisionRecord  # noqa: E402
 from dai_server.db.models import DecisionORM  # noqa: E402
 from dai_server.db.session import close_engine, create_tables, get_db  # noqa: E402
 from dai_server.export.article19 import generate_article19_export  # noqa: E402
+from dai_server.export.article19_pdf import generate_article19_pdf  # noqa: E402
 from dai_server.routes import ingest, query, verify  # noqa: E402
 
 
@@ -162,16 +163,35 @@ async def health() -> dict:
 # ── Article 19 Export Route ───────────────────────────────────────────────────
 
 
-@app.post("/export/article19", tags=["Export"])
+@app.post(
+    "/export/article19",
+    tags=["Export"],
+    responses={
+        200: {
+            "description": "Compliance export (format via ?format= query param)",
+            "content": {
+                "application/json": {},
+                "application/pdf": {},
+                "text/plain": {},
+            },
+        }
+    },
+)
 async def export_article19(
     request: Article19ExportRequest,
-    format: str = FQuery(default="json"),
+    format: str = FQuery(  # noqa: A002
+        default="json",
+        description="Output format: json | pdf | text",
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """
     Generate an EU AI Act Article 19 compliance export.
 
-    Use ?format=text for a human-readable plain text report.
+    **Format options (via `?format=` query param):**
+    - `json`  — Machine-readable JSON *(default)*
+    - `pdf`   — Professional branded PDF report (A4)
+    - `text`  — Human-readable plain text
     """
     from sqlalchemy import select
 
@@ -208,6 +228,15 @@ async def export_article19(
         records, request.from_timestamp, request.to_timestamp, chain_result
     )
 
+    if format == "pdf":
+        pdf_bytes = generate_article19_pdf(export)
+        ts = export.generated_at.strftime("%Y%m%d_%H%M%S")
+        filename = f"article19_report_{ts}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
     if format == "text":
         return PlainTextResponse(content=export.to_text_report())
     return JSONResponse(content=json.loads(export.to_json()))
