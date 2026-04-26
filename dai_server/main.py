@@ -34,7 +34,7 @@ from dai_server.db.models import DecisionORM  # noqa: E402
 from dai_server.db.session import close_engine, create_tables, get_db  # noqa: E402
 from dai_server.export.article19 import generate_article19_export  # noqa: E402
 from dai_server.export.article19_pdf import generate_article19_pdf  # noqa: E402
-from dai_server.routes import ingest, query, verify  # noqa: E402
+from dai_server.routes import ingest, policy, query, verify  # noqa: E402
 
 
 @asynccontextmanager
@@ -92,7 +92,6 @@ instrumentator = Instrumentator(
     inprogress_labels=True,
 )
 instrumentator.instrument(app).expose(app)
-
 
 # ── API Key Authentication Middleware ─────────────────────────────────────────
 
@@ -152,6 +151,7 @@ async def api_key_middleware(request: Request, call_next: Any) -> Response:
 app.include_router(ingest.router)
 app.include_router(query.router)
 app.include_router(verify.router)
+app.include_router(policy.router)
 
 
 @app.get("/health", tags=["Health"])

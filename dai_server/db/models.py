@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     Index,
+    Integer,
     String,
     Text,
     func,
@@ -90,3 +91,39 @@ class ApiKeyORM(Base):
 
     def __repr__(self) -> str:
         return f"<ApiKeyORM agent_id={self.agent_id!r} roles={self.roles!r}>"
+
+
+class PolicyVersionORM(Base):
+    """
+    ORM representation of a PolicyVersion.
+    """
+
+    __tablename__ = "policy_versions"
+
+    policy_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    version: Mapped[str] = mapped_column(String(50), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    effective_from: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    effective_to: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    change_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    change_summary: Mapped[str] = mapped_column(String(500), nullable=False)
+    authorized_decision_types: Mapped[str] = mapped_column(Text, nullable=False)
+    max_auto_approve_confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    exception_types_allowed: Mapped[str] = mapped_column(Text, nullable=False)
+    retention_period_days: Mapped[int] = mapped_column(Integer, nullable=False, default=180)
+    policy_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    clauses_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<PolicyVersionORM policy_id={self.policy_id!r} version={self.version!r}>"
