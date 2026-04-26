@@ -4,9 +4,11 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-PYTHON       := python3
-PIP          := $(PYTHON) -m pip
-PYTEST       := pytest
+PYTHON       := .venv/bin/python
+PIP          := .venv/bin/pip
+PYTEST       := .venv/bin/pytest
+RUFF         := .venv/bin/ruff
+MYPY         := .venv/bin/mypy
 DOCKER_COMPOSE := docker compose -f docker/docker-compose.yml
 PORT         ?= 8080
 
@@ -68,27 +70,33 @@ help: ## Show this help message
 install: ## Install the SDK in editable mode (basic deps only)
 	$(PIP) install -e "."
 
-install-dev: ## Install the SDK + all dev/test dependencies
+install-dev: ## Install the SDK + all dev/test dependencies (creates .venv automatically)
+	@if [ ! -d .venv ]; then python3.13 -m venv .venv; echo "Created .venv"; fi
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[dev]"
+	@echo ""
+	@echo "$(GREEN)✓ Ready. Activate with:$(RESET) source .venv/bin/activate"
 
 install-all: ## Install the SDK + dev + all optional extras (langchain, opentelemetry)
+	@if [ ! -d .venv ]; then python3.13 -m venv .venv; echo "Created .venv"; fi
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[dev,langchain,opentelemetry,server]"
+	@echo ""
+	@echo "$(GREEN)✓ Ready. Activate with:$(RESET) source .venv/bin/activate"
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  CODE QUALITY
 # ─────────────────────────────────────────────────────────────────────────────
 
 lint: ## Run ruff linter (check only, no changes)
-	ruff check .
+	$(RUFF) check .
 
 format: ## Auto-format code with ruff (modifies files)
-	ruff format .
-	ruff check . --fix
+	$(RUFF) format .
+	$(RUFF) check . --fix
 
 typecheck: ## Run mypy strict type-checker on the SDK
-	mypy dai/
+	$(MYPY) dai/
 
 check: lint typecheck ## Run lint + typecheck together (full CI quality gate)
 	@echo ""
@@ -121,10 +129,10 @@ test-watch: ## Re-run unit tests automatically on file changes (requires pytest-
 # ─────────────────────────────────────────────────────────────────────────────
 
 server: ## Start the API server in dev mode with auto-reload (port $(PORT))
-	uvicorn dai_server.main:app --reload --host 0.0.0.0 --port $(PORT)
+	$(PYTHON) -m uvicorn dai_server.main:app --reload --host 0.0.0.0 --port $(PORT)
 
 server-prod: ## Start the API server in production mode via Gunicorn
-	gunicorn dai_server.main:app \
+	$(PYTHON) -m gunicorn dai_server.main:app \
 	    -k uvicorn.workers.UvicornWorker \
 	    --workers 4 \
 	    --bind 0.0.0.0:$(PORT) \
