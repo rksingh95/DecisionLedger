@@ -25,7 +25,8 @@ RESET := \033[0m
         test test-unit test-integration test-cov test-watch \
         server server-prod \
         migrate migrate-down migrate-create migrate-history \
-        docker-up docker-down docker-logs docker-migrate docker-rebuild \
+        docker-up docker-down docker-clean docker-logs docker-logs-api \
+        docker-status docker-migrate docker-rebuild docker-shell docker-psql \
         build clean
 
 # ── Default target ────────────────────────────────────────────────────────────
@@ -171,24 +172,52 @@ migrate-history: ## Show migration history
 #  DOCKER
 # ─────────────────────────────────────────────────────────────────────────────
 
-docker-up: ## Start Postgres + API server via Docker Compose
-	$(DOCKER_COMPOSE) up -d
+docker-up: ## Build images + start full stack (Postgres → migrate → API) — one command
+	@echo "$(BOLD)$(CYAN)Building images…$(RESET)"
+	$(DOCKER_COMPOSE) build
+	@echo "$(BOLD)$(CYAN)Starting stack…$(RESET)"
+	$(DOCKER_COMPOSE) up -d --wait
 	@echo ""
-	@echo "$(GREEN)✓ Stack started$(RESET)  →  API on http://localhost:$(PORT)  |  Postgres on :5432"
+	@echo "$(GREEN)✓ Stack is up and healthy$(RESET)"
+	@echo "  API     → http://localhost:$(PORT)"
+	@echo "  Health  → http://localhost:$(PORT)/health"
+	@echo "  Docs    → http://localhost:$(PORT)/docs"
+	@echo "  Postgres → localhost:5432  (user: dai / db: dai)"
+	@echo ""
+	@echo "  Logs : make docker-logs"
+	@echo "  Stop : make docker-down"
 
-docker-down: ## Stop and remove all Docker Compose containers
+docker-down: ## Stop and remove all containers (keeps Postgres volume)
 	$(DOCKER_COMPOSE) down
+	@echo "$(GREEN)✓ Stack stopped$(RESET)"
 
-docker-logs: ## Tail logs from all Docker Compose services
+docker-clean: ## Stop containers AND remove all volumes (wipes the database)
+	$(DOCKER_COMPOSE) down -v
+	@echo "$(GREEN)✓ Stack stopped and volumes removed$(RESET)"
+
+docker-logs: ## Tail logs from all services (Ctrl+C to stop)
 	$(DOCKER_COMPOSE) logs -f
 
-docker-migrate: ## Run Alembic migrations inside the Docker network
-	$(DOCKER_COMPOSE) run --rm api alembic upgrade head
+docker-logs-api: ## Tail API server logs only
+	$(DOCKER_COMPOSE) logs -f api
 
-docker-rebuild: ## Rebuild Docker images and restart the stack
+docker-status: ## Show current status of all containers
+	$(DOCKER_COMPOSE) ps
+
+docker-migrate: ## Run Alembic migrations inside the Docker network
+	$(DOCKER_COMPOSE) run --rm migrate
+
+docker-rebuild: ## Force-rebuild images from scratch and restart the stack
 	$(DOCKER_COMPOSE) down
 	$(DOCKER_COMPOSE) build --no-cache
-	$(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d --wait
+	@echo "$(GREEN)✓ Stack rebuilt and restarted$(RESET)"
+
+docker-shell: ## Open a shell inside the running API container
+	$(DOCKER_COMPOSE) exec api /bin/bash
+
+docker-psql: ## Connect to Postgres inside the Docker network
+	$(DOCKER_COMPOSE) exec postgres psql -U dai -d dai
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BUILD & CLEAN

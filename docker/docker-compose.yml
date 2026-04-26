@@ -1,8 +1,8 @@
-version: "3.9"
-
 services:
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
+    container_name: dai_postgres
     environment:
       POSTGRES_USER: dai
       POSTGRES_PASSWORD: ${DAI_DB_PASSWORD:-dai_dev_password}
@@ -10,40 +10,58 @@ services:
     volumes:
       - dai_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dai"]
+      test: ["CMD-SHELL", "pg_isready -U dai -d dai"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     ports:
-      - "5432:5432"
-
-  api:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.api
-    environment:
-      DAI_DATABASE_URL: postgresql+asyncpg://dai:${DAI_DB_PASSWORD:-dai_dev_password}@postgres:5432/dai
-      DAI_API_KEY: ${DAI_API_KEY:-change-me-before-production}
-      DAI_ENVIRONMENT: ${DAI_ENVIRONMENT:-production}
-      DAI_LOG_LEVEL: ${DAI_LOG_LEVEL:-INFO}
-    ports:
-      - "${DAI_PORT:-8080}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      # Expose to host only if needed (e.g. for psql/DBeaver).
+      # Set DAI_POSTGRES_PORT=5433 to avoid conflicts with a local Postgres.
+      - "${DAI_POSTGRES_PORT:-5432}:5432"
     restart: unless-stopped
 
+  # ── Migrations (runs once, exits) ─────────────────────────────────────────
   migrate:
     build:
       context: ..
       dockerfile: docker/Dockerfile.api
+    container_name: dai_migrate
     command: alembic upgrade head
     environment:
       DAI_DATABASE_URL: postgresql+asyncpg://dai:${DAI_DB_PASSWORD:-dai_dev_password}@postgres:5432/dai
+      DAI_API_KEY: ${DAI_API_KEY:-dev-key-change-me}
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
+  # ── API Server ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: dai_api
+    environment:
+      DAI_DATABASE_URL: postgresql+asyncpg://dai:${DAI_DB_PASSWORD:-dai_dev_password}@postgres:5432/dai
+      DAI_API_KEY: ${DAI_API_KEY:-dev-key-change-me}
+      DAI_LOG_LEVEL: ${DAI_LOG_LEVEL:-INFO}
+      DAI_CORS_ORIGINS: ${DAI_CORS_ORIGINS:-}
+    ports:
+      - "${DAI_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 volumes:
   dai_postgres_data:
+    name: dai_postgres_data

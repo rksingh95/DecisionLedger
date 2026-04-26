@@ -1,24 +1,40 @@
 FROM python:3.13-slim
 
+LABEL org.opencontainers.image.title="DecisionLedger API"
+LABEL org.opencontainers.image.description="Append-only AI decision ledger — EU AI Act Article 19 compliant"
+LABEL org.opencontainers.image.source="https://github.com/rksingh95/DecisionLedger"
+
 WORKDIR /app
 
+# Install system deps: gcc+libpq-dev for asyncpg compilation, curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl && rm -rf /var/lib/apt/lists/*
+    gcc libpq-dev curl \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml .
-RUN pip install --no-cache-dir -e ".[server]"
-
-COPY dai/ ./dai/
+# Copy source + manifests
+COPY pyproject.toml README.md ./
+COPY dai/        ./dai/
 COPY dai_server/ ./dai_server/
-COPY cli/ ./cli/
+COPY cli/        ./cli/
 COPY alembic.ini .
 
+# Install SDK + all server dependencies (gunicorn, prometheus, etc.)
+RUN pip install --no-cache-dir -e ".[server]"
+
+# Non-root user
 RUN useradd -m -u 1000 dai && chown -R dai:dai /app
 USER dai
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["gunicorn", "dai_server.main:app", "--workers", "2", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--log-level", "info"]
+CMD ["python", "-m", "gunicorn", \
+     "dai_server.main:app", \
+     "--workers", "2", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8080", \
+     "--log-level", "info", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
