@@ -96,10 +96,12 @@ class TestLogDecisionDecorator:
             raise ValueError("bad subject extraction")
 
         @log_decision(
-            agent_id="test-agent", decision_type="test",
-            policy_id="p", policy_version="1.0.0",
+            agent_id="test-agent",
+            decision_type="test",
+            policy_id="p",
+            policy_version="1.0.0",
             extract_subject=bad_subject,
-            extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0}
+            extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0},
         )
         async def my_func():
             return "foo"
@@ -114,11 +116,13 @@ class TestLogDecisionDecorator:
             raise ValueError("bad context extraction")
 
         @log_decision(
-            agent_id="test-agent", decision_type="test",
-            policy_id="p", policy_version="1.0.0",
+            agent_id="test-agent",
+            decision_type="test",
+            policy_id="p",
+            policy_version="1.0.0",
             extract_subject=lambda a, k: "sub",
             extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0},
-            extract_context=bad_context
+            extract_context=bad_context,
         )
         async def my_func():
             return "foo"
@@ -133,11 +137,13 @@ class TestLogDecisionDecorator:
         mock_decision_commit.side_effect = RuntimeError("commit failed")
 
         @log_decision(
-            agent_id="test-agent", decision_type="test",
-            policy_id="p", policy_version="1.0.0",
+            agent_id="test-agent",
+            decision_type="test",
+            policy_id="p",
+            policy_version="1.0.0",
             extract_subject=lambda a, k: "sub",
             extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0},
-            on_error="raise_exception"
+            on_error="raise_exception",
         )
         async def my_func():
             return "foo"
@@ -151,11 +157,13 @@ class TestLogDecisionDecorator:
         mock_decision_commit.side_effect = RuntimeError("commit failed")
 
         @log_decision(
-            agent_id="test-agent", decision_type="test",
-            policy_id="p", policy_version="1.0.0",
+            agent_id="test-agent",
+            decision_type="test",
+            policy_id="p",
+            policy_version="1.0.0",
             extract_subject=lambda a, k: "sub",
             extract_outcome=lambda r: {"outcome": "app", "confidence": 1.0},
-            on_error="raise_exception"
+            on_error="raise_exception",
         )
         async def my_func():
             raise ValueError("func failed")

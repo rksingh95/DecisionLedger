@@ -51,11 +51,15 @@ class TestIngestQuery:
         client = SQLiteDAIClient(str(tmp_path / "test.db"))
         prev = GENESIS_HASH
         for i in range(5):
-            r = prepare_record_for_commit(_make_create(agent_id="agent-a", subject_ref=f"claim:{i}"), prev)
+            r = prepare_record_for_commit(
+                _make_create(agent_id="agent-a", subject_ref=f"claim:{i}"), prev
+            )
             await client.commit(r)
             prev = r.record_hash
         for i in range(5):
-            r = prepare_record_for_commit(_make_create(agent_id="agent-b", subject_ref=f"claim:{i+5}"), prev)
+            r = prepare_record_for_commit(
+                _make_create(agent_id="agent-b", subject_ref=f"claim:{i + 5}"), prev
+            )
             await client.commit(r)
             prev = r.record_hash
 
@@ -69,7 +73,9 @@ class TestIngestQuery:
         prev = GENESIS_HASH
         outcomes = ["approved", "denied", "escalated"]
         for outcome in outcomes:
-            r = prepare_record_for_commit(_make_create(outcome=outcome, subject_ref=f"claim:{outcome}"), prev)
+            r = prepare_record_for_commit(
+                _make_create(outcome=outcome, subject_ref=f"claim:{outcome}"), prev
+            )
             await client.commit(r)
             prev = r.record_hash
 
@@ -80,6 +86,7 @@ class TestIngestQuery:
     async def test_exception_decision_round_trip(self, tmp_path):
         client = SQLiteDAIClient(str(tmp_path / "test.db"))
         from dai.models import ExceptionType
+
         create = _make_create(
             exception_applied=True,
             exception_type=ExceptionType.conservative_fallback,

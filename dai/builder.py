@@ -122,9 +122,7 @@ class Decision:
         d._agent_id = agent_id
         d._decision_type = decision_type
         d._subject_ref = subject_ref
-        d._agent_type = (
-            AgentType(agent_type) if isinstance(agent_type, str) else agent_type
-        )
+        d._agent_type = AgentType(agent_type) if isinstance(agent_type, str) else agent_type
         d._model_version = model_version
         d._deployment_id = deployment_id
         d._start_time = datetime.now(UTC)
@@ -190,9 +188,7 @@ class Decision:
         self._override_applied = True
         self._override_by = override_by
         self._override_justification = (
-            ExceptionType(justification)
-            if isinstance(justification, str)
-            else justification
+            ExceptionType(justification) if isinstance(justification, str) else justification
         )
         return self
 
@@ -256,9 +252,7 @@ class Decision:
         """
         self._exception_applied = True
         self._exception_type = (
-            ExceptionType(exception_type)
-            if isinstance(exception_type, str)
-            else exception_type
+            ExceptionType(exception_type) if isinstance(exception_type, str) else exception_type
         )
         self._exception_reason_code = reason_code
         return self
@@ -356,6 +350,7 @@ class Decision:
         except Exception as exc:
             logger.error("Decision commit failed: %s", exc)
             from dai.config import ErrorPolicy
+
             if config.on_error == ErrorPolicy.raise_exception:
                 raise
             return CommitResult(success=False, error=str(exc))
@@ -378,6 +373,7 @@ class Decision:
 
         # Loop is running — run in a new thread
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(asyncio.run, self.commit())
             return future.result()
@@ -405,6 +401,7 @@ class Decision:
             )
             self.with_outcome(outcome="escalated", confidence=0.0)
             import contextlib
+
             with contextlib.suppress(Exception):
                 await self.commit()
             return False  # Re-raise original exception

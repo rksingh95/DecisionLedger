@@ -6,7 +6,6 @@ Provides the async SQLAlchemy engine and session factory.
 Uses environment variable ``DAI_DATABASE_URL`` for connection string.
 """
 
-
 import os
 from collections.abc import AsyncGenerator
 

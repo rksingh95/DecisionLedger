@@ -2,7 +2,6 @@
 DAI Server — Chain verification routes
 """
 
-
 import json
 from datetime import datetime
 
@@ -73,8 +72,7 @@ async def verify_single_record(
         previous_hash = GENESIS_HASH
     else:
         pred_result = await db.execute(
-            select(DecisionORM.record_hash)
-            .where(DecisionORM.record_hash == record.previous_hash)
+            select(DecisionORM.record_hash).where(DecisionORM.record_hash == record.previous_hash)
         )
         pred_hash = pred_result.scalar_one_or_none()
         if pred_hash is None:

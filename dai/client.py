@@ -8,6 +8,7 @@ Three transport backends behind a unified async interface.
     client = get_client()
     result = await client.commit(record)
 """
+
 import asyncio
 import json
 import logging
@@ -29,6 +30,7 @@ logger = logging.getLogger("dai.client")
 @dataclass
 class CommitResult:
     """Result of committing a decision record."""
+
     success: bool
     decision_id: str | None = None
     record_hash: str | None = None
@@ -62,19 +64,30 @@ class HTTPDAIClient(BaseDAIClient):
             "Content-Type": "application/json",
         }
 
-    async def _request(self, method: str, url: str, *, content: str | None = None, params: dict[str, Any] | None = None) -> httpx.Response:
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        content: str | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
         last_err: Exception | None = None
         async with httpx.AsyncClient(timeout=self._config.timeout_seconds) as client:
             for attempt in range(self._config.max_retries):
                 try:
-                    resp = await client.request(method, url, headers=self._headers(), content=content, params=params)
+                    resp = await client.request(
+                        method, url, headers=self._headers(), content=content, params=params
+                    )
                     resp.raise_for_status()
                     return resp
                 except Exception as exc:
                     last_err = exc
                     if attempt < self._config.max_retries - 1:
-                        await asyncio.sleep(self._config.retry_backoff_seconds * (2 ** attempt))
-        raise ClientError(f"Request to {url} failed after {self._config.max_retries} attempts: {last_err}")
+                        await asyncio.sleep(self._config.retry_backoff_seconds * (2**attempt))
+        raise ClientError(
+            f"Request to {url} failed after {self._config.max_retries} attempts: {last_err}"
+        )
 
     async def commit(self, record: DecisionRecord) -> CommitResult:
         t0 = time.monotonic()
@@ -85,10 +98,16 @@ class HTTPDAIClient(BaseDAIClient):
             if self._config.emit_opentelemetry_spans:
                 try:
                     from dai.integrations.opentelemetry import emit_decision_span
+
                     emit_decision_span(record)
                 except Exception:
                     pass
-            return CommitResult(success=True, decision_id=data.get("decision_id", record.decision_id), record_hash=data.get("record_hash", record.record_hash), latency_ms=(time.monotonic() - t0) * 1000)
+            return CommitResult(
+                success=True,
+                decision_id=data.get("decision_id", record.decision_id),
+                record_hash=data.get("record_hash", record.record_hash),
+                latency_ms=(time.monotonic() - t0) * 1000,
+            )
         except Exception as exc:
             latency_ms = (time.monotonic() - t0) * 1000
             logger.error("DAI commit failed: %s", exc)
@@ -136,7 +155,9 @@ class HTTPDAIClient(BaseDAIClient):
             logger.error("DAI verify failed: %s", exc)
             if self._config.on_error == ErrorPolicy.raise_exception:
                 raise
-            return ChainVerifyResult(valid=False, total_records=0, verified_at=datetime.now(UTC), message=str(exc))
+            return ChainVerifyResult(
+                valid=False, total_records=0, verified_at=datetime.now(UTC), message=str(exc)
+            )
 
     async def get_latest_hash(self) -> str:
         url = f"{self._config.endpoint}/decisions/latest-hash"
@@ -178,6 +199,7 @@ class SQLiteDAIClient(BaseDAIClient):
             if self._initialised:
                 return
             import aiosqlite
+
             async with aiosqlite.connect(self._db_path) as db:
                 await db.execute(self._CREATE_TABLE)
                 await db.commit()
@@ -188,13 +210,28 @@ class SQLiteDAIClient(BaseDAIClient):
         t0 = time.monotonic()
         try:
             import aiosqlite
+
             async with aiosqlite.connect(self._db_path) as db:
                 await db.execute(
                     "INSERT OR IGNORE INTO decisions (decision_id, record_hash, previous_hash, decision_timestamp, decision_type, agent_id, full_record, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (record.decision_id, record.record_hash, record.previous_hash, record.decision_timestamp.isoformat(), record.decision_type, record.agent_id, record.model_dump_json(), datetime.now(UTC).isoformat()),
+                    (
+                        record.decision_id,
+                        record.record_hash,
+                        record.previous_hash,
+                        record.decision_timestamp.isoformat(),
+                        record.decision_type,
+                        record.agent_id,
+                        record.model_dump_json(),
+                        datetime.now(UTC).isoformat(),
+                    ),
                 )
                 await db.commit()
-            return CommitResult(success=True, decision_id=record.decision_id, record_hash=record.record_hash, latency_ms=(time.monotonic() - t0) * 1000)
+            return CommitResult(
+                success=True,
+                decision_id=record.decision_id,
+                record_hash=record.record_hash,
+                latency_ms=(time.monotonic() - t0) * 1000,
+            )
         except Exception as exc:
             latency_ms = (time.monotonic() - t0) * 1000
             logger.error("SQLite commit failed: %s", exc)
@@ -231,6 +268,7 @@ class SQLiteDAIClient(BaseDAIClient):
 
         try:
             import aiosqlite
+
             async with aiosqlite.connect(self._db_path) as db, db.execute(sql, params) as cursor:
                 rows = await cursor.fetchall()
             records = []
@@ -238,9 +276,15 @@ class SQLiteDAIClient(BaseDAIClient):
                 data = json.loads(full_record)
                 if filters.outcome and data.get("outcome") != filters.outcome:
                     continue
-                if filters.exception_applied is not None and data.get("exception_applied") != filters.exception_applied:
+                if (
+                    filters.exception_applied is not None
+                    and data.get("exception_applied") != filters.exception_applied
+                ):
                     continue
-                if filters.override_applied is not None and data.get("override_applied") != filters.override_applied:
+                if (
+                    filters.override_applied is not None
+                    and data.get("override_applied") != filters.override_applied
+                ):
                     continue
                 records.append(DecisionRecord(**data))
             return records
@@ -253,14 +297,23 @@ class SQLiteDAIClient(BaseDAIClient):
 
     async def verify_chain(self, from_ts: datetime, to_ts: datetime) -> ChainVerifyResult:
         from dai.hash_chain import verify_chain as _vc
-        records = await self.query(QueryFilter(from_timestamp=from_ts, to_timestamp=to_ts, limit=1000))
+
+        records = await self.query(
+            QueryFilter(from_timestamp=from_ts, to_timestamp=to_ts, limit=1000)
+        )
         return _vc(records)
 
     async def get_latest_hash(self) -> str:
         await self._ensure_table()
         try:
             import aiosqlite
-            async with aiosqlite.connect(self._db_path) as db, db.execute("SELECT record_hash FROM decisions ORDER BY decision_timestamp DESC LIMIT 1") as cursor:
+
+            async with (
+                aiosqlite.connect(self._db_path) as db,
+                db.execute(
+                    "SELECT record_hash FROM decisions ORDER BY decision_timestamp DESC LIMIT 1"
+                ) as cursor,
+            ):
                 row = await cursor.fetchone()
             return row[0] if row else GENESIS_HASH
         except Exception:
@@ -269,12 +322,20 @@ class SQLiteDAIClient(BaseDAIClient):
 
 class NoopDAIClient(BaseDAIClient):
     """Discards all records silently. Used for testing."""
+
     async def commit(self, record: DecisionRecord) -> CommitResult:
-        return CommitResult(success=True, decision_id=record.decision_id, record_hash=record.record_hash)
+        return CommitResult(
+            success=True, decision_id=record.decision_id, record_hash=record.record_hash
+        )
+
     async def query(self, filters: QueryFilter) -> list[DecisionRecord]:
         return []
+
     async def verify_chain(self, from_ts: datetime, to_ts: datetime) -> ChainVerifyResult:
-        return ChainVerifyResult(valid=True, total_records=0, verified_at=datetime.now(UTC), message="Noop client.")
+        return ChainVerifyResult(
+            valid=True, total_records=0, verified_at=datetime.now(UTC), message="Noop client."
+        )
+
     async def get_latest_hash(self) -> str:
         return GENESIS_HASH
 
@@ -285,6 +346,7 @@ _client_cache: dict[BackendType, BaseDAIClient] = {}
 def get_client(config: Any = None) -> BaseDAIClient:
     """Return the appropriate DAI client for the current configuration."""
     from dai.config import get_config as _gc
+
     cfg = config or _gc()
     if cfg.backend not in _client_cache:
         if cfg.backend == BackendType.http:

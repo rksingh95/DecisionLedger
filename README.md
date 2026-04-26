@@ -33,7 +33,7 @@
 
 ## 🚨 The Problem
 
-AI agents make consequential decisions — approve a loan, triage a claim, flag a transaction — but those decisions are rarely recorded in a structured, auditable way. When regulators require an audit trail, or when an incident needs to be reconstructed, organisations discover they have logs but no ledger: timestamped text, not tamper-evident, typed records. 
+AI agents make consequential decisions — approve a loan, triage a claim, flag a transaction — but those decisions are rarely recorded in a structured, auditable way. When regulators require an audit trail, or when an incident needs to be reconstructed, organisations discover they have logs but no ledger: timestamped text, not tamper-evident, typed records.
 
 The **EU AI Act (Article 19)** now mandates structured logging for high-risk AI systems. DAI provides exactly that, as a drop-in SDK.
 
@@ -188,9 +188,9 @@ async with dai.Decision.begin(
     d.with_policy("risk-policy-v2", "2.1.0")
     d.with_authority("risk scoring", "risk-team")
     d.with_context(["credit-report:ref"], ["credit-bureau-api"])
-    
+
     result = await classify_risk(application_id="APP-001")
-    
+
     d.with_outcome(outcome=result.label, confidence=result.score)
 # Auto-commits on exit. If exception: records conservative_fallback.
 ```

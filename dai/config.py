@@ -136,6 +136,7 @@ class DAIConfig:
         """
         try:
             from dotenv import load_dotenv
+
             load_dotenv()
         except ImportError:
             pass  # python-dotenv is optional at import time
@@ -160,7 +161,9 @@ class DAIConfig:
             timeout_seconds=float(_get("TIMEOUT_SECONDS", "2.0")),
             max_retries=int(_get("MAX_RETRIES", "3")),
             retry_backoff_seconds=float(_get("RETRY_BACKOFF", "0.5")),
-            on_error=_coerce_enum(ErrorPolicy, _get("ON_ERROR", "log_and_continue"), "DAI_ON_ERROR"),
+            on_error=_coerce_enum(
+                ErrorPolicy, _get("ON_ERROR", "log_and_continue"), "DAI_ON_ERROR"
+            ),
             sqlite_path=_get("SQLITE_PATH", "./dai_local.db"),
             environment=_get("ENVIRONMENT", "development"),
             log_level=_get("LOG_LEVEL", "INFO"),
@@ -180,8 +183,7 @@ def _coerce_enum(enum_cls: type, value: Any, field_name: str) -> Any:
     except ValueError as exc:
         valid = [e.value for e in enum_cls]  # type: ignore[attr-defined]
         raise ValueError(
-            f"Invalid value {value!r} for {field_name}. "
-            f"Valid options: {valid}"
+            f"Invalid value {value!r} for {field_name}. Valid options: {valid}"
         ) from exc
 
 

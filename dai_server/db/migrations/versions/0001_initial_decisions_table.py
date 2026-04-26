@@ -5,6 +5,7 @@ Revises:
 Create Date: 2026-04-25
 
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -58,19 +59,14 @@ def upgrade() -> None:
     op.create_index("ix_decisions_type_ts", "decisions", ["decision_type", "decision_timestamp"])
 
     # Append-only enforcement via PostgreSQL rules
-    op.execute(
-        "CREATE RULE no_update_decisions AS ON UPDATE TO decisions DO INSTEAD NOTHING;"
-    )
-    op.execute(
-        "CREATE RULE no_delete_decisions AS ON DELETE TO decisions DO INSTEAD NOTHING;"
-    )
+    op.execute("CREATE RULE no_update_decisions AS ON UPDATE TO decisions DO INSTEAD NOTHING;")
+    op.execute("CREATE RULE no_delete_decisions AS ON DELETE TO decisions DO INSTEAD NOTHING;")
 
     # Row-level security
     op.execute("ALTER TABLE decisions ENABLE ROW LEVEL SECURITY;")
     op.execute("CREATE POLICY dai_insert_only ON decisions FOR INSERT WITH CHECK (true);")
     op.execute(
-        "CREATE POLICY dai_no_select_anon ON decisions FOR SELECT "
-        "USING (current_user = 'dai_app');"
+        "CREATE POLICY dai_no_select_anon ON decisions FOR SELECT USING (current_user = 'dai_app');"
     )
 
 

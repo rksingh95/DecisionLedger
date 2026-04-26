@@ -52,8 +52,8 @@ class TestArticle19Export:
 
         for i in range(50):
             outcome = outcomes[i % 3]
-            is_exc = (i % 7 == 0)
-            is_ovr = (i % 11 == 0)
+            is_exc = i % 7 == 0
+            is_ovr = i % 11 == 0
             pv = "3.2.1" if i < 30 else "3.3.0"
             create = _make_create(
                 outcome=outcome,
@@ -71,6 +71,7 @@ class TestArticle19Export:
                 override_count += 1
 
         from dai.models import QueryFilter
+
         records = await client.query(QueryFilter(limit=1000))
         assert len(records) == 50
 
@@ -92,6 +93,7 @@ class TestArticle19Export:
         await client.commit(r)
 
         from dai.models import QueryFilter
+
         records = await client.query(QueryFilter(limit=100))
         chain_result = verify_chain(records)
         from_ts = records[0].decision_timestamp
@@ -108,6 +110,7 @@ class TestArticle19Export:
         import json
 
         import aiosqlite
+
         db_path = str(tmp_path / "test.db")
         client = SQLiteDAIClient(db_path)
         prev = GENESIS_HASH
@@ -121,14 +124,20 @@ class TestArticle19Export:
         # Tamper with record 2
         target_id = records_list[1].decision_id
         async with aiosqlite.connect(db_path) as db:
-            async with db.execute("SELECT full_record FROM decisions WHERE decision_id = ?", (target_id,)) as cursor:
+            async with db.execute(
+                "SELECT full_record FROM decisions WHERE decision_id = ?", (target_id,)
+            ) as cursor:
                 row = await cursor.fetchone()
             data = json.loads(row[0])
             data["outcome"] = "denied"
-            await db.execute("UPDATE decisions SET full_record = ? WHERE decision_id = ?", (json.dumps(data), target_id))
+            await db.execute(
+                "UPDATE decisions SET full_record = ? WHERE decision_id = ?",
+                (json.dumps(data), target_id),
+            )
             await db.commit()
 
         from dai.models import QueryFilter
+
         records = await client.query(QueryFilter(limit=100))
         chain_result = verify_chain(records)
         from_ts = min(r.decision_timestamp for r in records)

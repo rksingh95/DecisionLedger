@@ -7,7 +7,6 @@ Starts the DAI decision ledger server.
     uvicorn dai_server.main:app --reload
 """
 
-
 import json
 import os
 import time
@@ -16,24 +15,25 @@ from contextlib import asynccontextmanager
 from datetime import UTC
 from typing import Any
 
-# Load .env file if present (no-op in production where env vars are injected)
-from dotenv import load_dotenv
+# load_dotenv() MUST be called before any module that reads os.environ at import
+# time (e.g. SQLAlchemy engine creation). The E402 noqa below is intentional.
+from dotenv import load_dotenv  # noqa: E402
 
-load_dotenv()
+load_dotenv()  # noqa: E402
 
-from fastapi import Depends, FastAPI, Request, Response
-from fastapi import Query as FQuery
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
-from prometheus_fastapi_instrumentator import Instrumentator
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, FastAPI, Request, Response  # noqa: E402
+from fastapi import Query as FQuery  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import JSONResponse, PlainTextResponse  # noqa: E402
+from prometheus_fastapi_instrumentator import Instrumentator  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
-from dai.hash_chain import verify_chain
-from dai.models import Article19ExportRequest, DecisionRecord
-from dai_server.db.models import DecisionORM
-from dai_server.db.session import close_engine, create_tables, get_db
-from dai_server.export.article19 import generate_article19_export
-from dai_server.routes import ingest, query, verify
+from dai.hash_chain import verify_chain  # noqa: E402
+from dai.models import Article19ExportRequest, DecisionRecord  # noqa: E402
+from dai_server.db.models import DecisionORM  # noqa: E402
+from dai_server.db.session import close_engine, create_tables, get_db  # noqa: E402
+from dai_server.export.article19 import generate_article19_export  # noqa: E402
+from dai_server.routes import ingest, query, verify  # noqa: E402
 
 
 @asynccontextmanager
@@ -71,6 +71,7 @@ app.add_middleware(
 
 # ── Request Timing Middleware ──────────────────────────────────────────────────
 
+
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next: Any) -> Response:
     t0 = time.monotonic()
@@ -95,6 +96,7 @@ instrumentator.instrument(app).expose(app)
 # ── API Key Authentication Middleware ─────────────────────────────────────────
 
 _UNPROTECTED_PATHS = {"/health", "/docs", "/redoc", "/openapi.json"}
+
 
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next: Any) -> Response:
@@ -159,6 +161,7 @@ async def health() -> dict:
 
 # ── Article 19 Export Route ───────────────────────────────────────────────────
 
+
 @app.post("/export/article19", tags=["Export"])
 async def export_article19(
     request: Article19ExportRequest,
@@ -192,8 +195,8 @@ async def export_article19(
     if request.include_chain_proof:
         chain_result = verify_chain(records)
     else:
-
         from dai.models import ChainVerifyResult
+
         chain_result = ChainVerifyResult(
             valid=True,
             total_records=len(records),

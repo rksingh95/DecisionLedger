@@ -53,8 +53,10 @@ class TestChainVerification:
         await client.commit(record)
 
         from dai.models import QueryFilter
+
         records = await client.query(QueryFilter(limit=100))
         from dai.hash_chain import verify_chain
+
         result = verify_chain(records)
         assert result.valid is True
         assert result.total_records == 1
@@ -65,6 +67,7 @@ class TestChainVerification:
 
         from dai.hash_chain import verify_chain
         from dai.models import QueryFilter
+
         records = await client.query(QueryFilter(limit=100))
         result = verify_chain(records)
         assert result.valid is True
@@ -74,6 +77,7 @@ class TestChainVerification:
         import json
 
         import aiosqlite
+
         db_path = str(tmp_path / "test.db")
         client = SQLiteDAIClient(db_path)
         records = await _build_chain(client, 5)
@@ -81,7 +85,9 @@ class TestChainVerification:
         # Tamper with record 3 directly in the database
         target_id = records[2].decision_id
         async with aiosqlite.connect(db_path) as db:
-            async with db.execute("SELECT full_record FROM decisions WHERE decision_id = ?", (target_id,)) as cursor:
+            async with db.execute(
+                "SELECT full_record FROM decisions WHERE decision_id = ?", (target_id,)
+            ) as cursor:
                 row = await cursor.fetchone()
             data = json.loads(row[0])
             data["outcome"] = "denied"  # Tamper
@@ -93,6 +99,7 @@ class TestChainVerification:
 
         from dai.hash_chain import verify_chain
         from dai.models import QueryFilter
+
         fetched = await client.query(QueryFilter(limit=100))
         result = verify_chain(fetched)
         assert result.valid is False
@@ -100,6 +107,7 @@ class TestChainVerification:
 
     async def test_empty_chain_valid(self, tmp_path):
         from dai.hash_chain import verify_chain
+
         result = verify_chain([])
         assert result.valid is True
         assert result.total_records == 0

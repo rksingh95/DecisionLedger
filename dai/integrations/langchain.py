@@ -22,7 +22,6 @@ Usage::
     agent_executor = AgentExecutor(agent=agent, tools=tools, callbacks=[handler])
 """
 
-
 import logging
 from typing import Any
 from uuid import UUID
@@ -34,6 +33,7 @@ logger = logging.getLogger("dai.integrations.langchain")
 
 try:
     from langchain_core.callbacks.base import BaseCallbackHandler
+
     _LANGCHAIN_AVAILABLE = True
 except ImportError:
     # Graceful fallback — DAICallbackHandler still importable but non-functional
@@ -83,7 +83,9 @@ class DAICallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
     def _get_run_key(self, run_id: UUID | str) -> str:
         return str(run_id)
 
-    def _get_or_create_decision(self, run_id: UUID | str, subject_ref: str = "langchain_run") -> Decision:
+    def _get_or_create_decision(
+        self, run_id: UUID | str, subject_ref: str = "langchain_run"
+    ) -> Decision:
         key = self._get_run_key(run_id)
         if key not in self._run_id_to_decision:
             d = Decision.begin(
@@ -132,9 +134,7 @@ class DAICallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
         try:
             key = self._get_run_key(run_id)
             if key in self._run_id_to_sources:
-                self._run_id_to_sources[key].append(
-                    f"{self.evidence_prefix}:tool_output"
-                )
+                self._run_id_to_sources[key].append(f"{self.evidence_prefix}:tool_output")
         except Exception as e:
             logger.error("DAICallbackHandler.on_tool_end error: %s", e)
 

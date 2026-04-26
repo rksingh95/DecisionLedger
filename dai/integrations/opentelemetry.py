@@ -23,7 +23,6 @@ If opentelemetry-api is not installed, all functions in this module
 return silently. No ImportError will be raised.
 """
 
-
 import logging
 from typing import TYPE_CHECKING
 
@@ -35,6 +34,7 @@ logger = logging.getLogger("dai.integrations.opentelemetry")
 try:
     from opentelemetry import trace
     from opentelemetry.trace import SpanKind
+
     _OTEL_AVAILABLE = True
 except ImportError:
     _OTEL_AVAILABLE = False

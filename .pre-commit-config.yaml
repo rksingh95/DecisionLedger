@@ -1,0 +1,71 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  DecisionLedger — Pre-commit Hooks
+#
+#  Runs automatically on every `git commit`.
+#  Install once with:  make install-dev   (or: pre-commit install)
+#  Run manually on all files:  pre-commit run --all-files
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Use the project's own .venv so hooks share the same dependency versions.
+default_language_version:
+  python: python3.13
+
+repos:
+  # ── 1. Basic file hygiene ───────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: debug-statements         # catches stray breakpoint() / pdb calls
+
+  # ── 2. Ruff — lint + auto-fix ───────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: ruff-fix
+        name: ruff (lint + auto-fix)
+        entry: .venv/bin/ruff check --fix
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: ["."]
+
+  # ── 3. Ruff — format ────────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff (format)
+        entry: .venv/bin/ruff format
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: ["."]
+
+  # ── 4. Mypy — type check (SDK only, fast) ───────────────────────────────────
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (type-check dai/)
+        entry: .venv/bin/mypy
+        language: system
+        pass_filenames: false
+        args: ["dai/"]
+
+  # ── 5. Pytest — unit tests only (fast, no coverage overhead) ────────────────
+  - repo: local
+    hooks:
+      - id: pytest-unit
+        name: pytest (unit tests)
+        entry: .venv/bin/pytest
+        language: system
+        pass_filenames: false
+        args:
+          - tests/unit/
+          - -q
+          - --tb=short
+          - --no-header

@@ -9,8 +9,8 @@ from dai.client import HTTPDAIClient, NoopDAIClient, SQLiteDAIClient, get_client
 from dai.config import BackendType, DAIConfig, ErrorPolicy
 from dai.models import DecisionRecord, QueryFilter
 
-
 # ── Shared fixtures ────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_record():
@@ -44,6 +44,7 @@ def mock_record():
 
 # ── NoopDAIClient ──────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_noop_client(mock_record):
     client = NoopDAIClient()
@@ -61,6 +62,7 @@ async def test_noop_client(mock_record):
 
 
 # ── HTTPDAIClient — happy paths ────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 @patch("dai.client.httpx.AsyncClient")
@@ -134,17 +136,19 @@ async def test_http_client_query_all_filter_branches(mock_async_client, mock_rec
     client._config = DAIConfig(backend=BackendType.http, endpoint="http://test", api_key="secret")
 
     now = datetime.now(UTC)
-    recs = await client.query(QueryFilter(
-        decision_id="some-id",
-        agent_id="agent-1",
-        decision_type="triage",
-        from_timestamp=now,
-        to_timestamp=now,
-        outcome="approved",
-        exception_applied=True,
-        override_applied=False,
-        cursor="cursor-val",
-    ))
+    recs = await client.query(
+        QueryFilter(
+            decision_id="some-id",
+            agent_id="agent-1",
+            decision_type="triage",
+            from_timestamp=now,
+            to_timestamp=now,
+            outcome="approved",
+            exception_applied=True,
+            override_applied=False,
+            cursor="cursor-val",
+        )
+    )
     assert recs == []
 
 
@@ -154,8 +158,10 @@ async def test_http_client_verify(mock_async_client):
     mock_instance = AsyncMock()
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "valid": True, "total_records": 5,
-        "verified_at": "2025-01-01T00:00:00Z", "message": "ok",
+        "valid": True,
+        "total_records": 5,
+        "verified_at": "2025-01-01T00:00:00Z",
+        "message": "ok",
     }
     mock_instance.request.return_value = mock_response
     mock_async_client.return_value.__aenter__.return_value = mock_instance
@@ -186,6 +192,7 @@ async def test_http_client_get_latest_hash(mock_async_client):
 
 # ── HTTPDAIClient — error handling ────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 @patch("dai.client.httpx.AsyncClient")
 async def test_http_client_commit_error_handling(mock_async_client, mock_record):
@@ -198,8 +205,11 @@ async def test_http_client_commit_error_handling(mock_async_client, mock_record)
     # log_and_continue
     client = HTTPDAIClient()
     client._config = DAIConfig(
-        backend=BackendType.http, endpoint="http://test", api_key="secret",
-        on_error=ErrorPolicy.log_and_continue, max_retries=1,
+        backend=BackendType.http,
+        endpoint="http://test",
+        api_key="secret",
+        on_error=ErrorPolicy.log_and_continue,
+        max_retries=1,
     )
     res = await client.commit(mock_record)
     assert not res.success
@@ -207,6 +217,7 @@ async def test_http_client_commit_error_handling(mock_async_client, mock_record)
     # raise_exception
     client._config.on_error = ErrorPolicy.raise_exception
     from dai.exceptions import ClientError
+
     with pytest.raises(ClientError):
         await client.commit(mock_record)
 
@@ -218,13 +229,17 @@ async def test_http_client_query_error_handling(mock_async_client):
 
     mock_instance = AsyncMock()
     mock_instance.request.side_effect = httpx.HTTPStatusError(
-        "Bad Request", request=MagicMock(), response=MagicMock(status_code=400, text="err"),
+        "Bad Request",
+        request=MagicMock(),
+        response=MagicMock(status_code=400, text="err"),
     )
     mock_async_client.return_value.__aenter__.return_value = mock_instance
 
     client = HTTPDAIClient()
     client._config = DAIConfig(
-        backend=BackendType.http, endpoint="http://test", api_key="secret",
+        backend=BackendType.http,
+        endpoint="http://test",
+        api_key="secret",
         on_error=ErrorPolicy.log_and_continue,
     )
     res = await client.query(QueryFilter())
@@ -232,6 +247,7 @@ async def test_http_client_query_error_handling(mock_async_client):
 
     client._config.on_error = ErrorPolicy.raise_exception
     from dai.exceptions import ClientError
+
     with pytest.raises(ClientError):
         await client.query(QueryFilter())
 
@@ -247,7 +263,9 @@ async def test_http_client_verify_error_handling(mock_async_client):
 
     client = HTTPDAIClient()
     client._config = DAIConfig(
-        backend=BackendType.http, endpoint="http://test", api_key="secret",
+        backend=BackendType.http,
+        endpoint="http://test",
+        api_key="secret",
         on_error=ErrorPolicy.log_and_continue,
     )
     res = await client.verify_chain(datetime.now(UTC), datetime.now(UTC))
@@ -260,6 +278,7 @@ async def test_http_client_verify_error_handling(mock_async_client):
 async def test_http_client_get_latest_hash_error(mock_async_client):
     """get_latest_hash should return GENESIS_HASH on error (log_and_continue)."""
     import httpx
+
     from dai.models import GENESIS_HASH
 
     mock_instance = AsyncMock()
@@ -268,8 +287,11 @@ async def test_http_client_get_latest_hash_error(mock_async_client):
 
     client = HTTPDAIClient()
     client._config = DAIConfig(
-        backend=BackendType.http, endpoint="http://test", api_key="secret",
-        on_error=ErrorPolicy.log_and_continue, max_retries=1,
+        backend=BackendType.http,
+        endpoint="http://test",
+        api_key="secret",
+        on_error=ErrorPolicy.log_and_continue,
+        max_retries=1,
     )
     h = await client.get_latest_hash()
     assert h == GENESIS_HASH
@@ -280,6 +302,7 @@ async def test_http_client_get_latest_hash_error(mock_async_client):
 async def test_http_client_get_latest_hash_error_raises(mock_async_client):
     """get_latest_hash should re-raise on raise_exception policy."""
     import httpx
+
     from dai.exceptions import ClientError
 
     mock_instance = AsyncMock()
@@ -288,14 +311,18 @@ async def test_http_client_get_latest_hash_error_raises(mock_async_client):
 
     client = HTTPDAIClient()
     client._config = DAIConfig(
-        backend=BackendType.http, endpoint="http://test", api_key="secret",
-        on_error=ErrorPolicy.raise_exception, max_retries=1,
+        backend=BackendType.http,
+        endpoint="http://test",
+        api_key="secret",
+        on_error=ErrorPolicy.raise_exception,
+        max_retries=1,
     )
     with pytest.raises(ClientError):
         await client.get_latest_hash()
 
 
 # ── SQLiteDAIClient ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_sqlite_client_commit_and_query(mock_record, tmp_path):
@@ -322,15 +349,17 @@ async def test_sqlite_client_query_all_filters(mock_record, tmp_path):
     past = datetime(2000, 1, 1, tzinfo=UTC)
 
     # All optional clauses populated
-    recs = await client.query(QueryFilter(
-        agent_id="test-agent",
-        decision_type="test",
-        from_timestamp=past,
-        to_timestamp=now,
-        outcome="approved",
-        exception_applied=False,
-        override_applied=False,
-    ))
+    recs = await client.query(
+        QueryFilter(
+            agent_id="test-agent",
+            decision_type="test",
+            from_timestamp=past,
+            to_timestamp=now,
+            outcome="approved",
+            exception_applied=False,
+            override_applied=False,
+        )
+    )
     assert len(recs) == 1
 
     # Cursor skips everything past it
@@ -353,6 +382,7 @@ async def test_sqlite_client_query_all_filters(mock_record, tmp_path):
 @pytest.mark.asyncio
 async def test_sqlite_client_get_latest_hash_empty(tmp_path):
     from dai.models import GENESIS_HASH
+
     db = str(tmp_path / "test.db")
     client = SQLiteDAIClient(db)
     h = await client.get_latest_hash()
@@ -374,7 +404,8 @@ async def test_sqlite_client_verify_chain(mock_record, tmp_path):
     client = SQLiteDAIClient(db)
     await client.commit(mock_record)
     result = await client.verify_chain(
-        datetime(2000, 1, 1, tzinfo=UTC), datetime(2100, 1, 1, tzinfo=UTC),
+        datetime(2000, 1, 1, tzinfo=UTC),
+        datetime(2100, 1, 1, tzinfo=UTC),
     )
     assert isinstance(result.valid, bool)
 
@@ -383,6 +414,7 @@ async def test_sqlite_client_verify_chain(mock_record, tmp_path):
 async def test_sqlite_client_commit_error_handling(mock_record, tmp_path):
     """SQLite error on commit should be absorbed under log_and_continue."""
     from dai.config import configure, reset_config
+
     configure(on_error="log_and_continue")
 
     db = str(tmp_path / "test.db")
@@ -399,6 +431,7 @@ async def test_sqlite_client_commit_error_handling(mock_record, tmp_path):
 async def test_sqlite_client_query_error_handling(tmp_path):
     """SQLite error on query should return [] under log_and_continue."""
     from dai.config import configure, reset_config
+
     configure(on_error="log_and_continue")
 
     db = str(tmp_path / "test.db")
@@ -412,6 +445,7 @@ async def test_sqlite_client_query_error_handling(tmp_path):
 
 
 # ── get_client / cache ─────────────────────────────────────────────────────────
+
 
 def test_get_client():
     reset_client_cache()

@@ -121,6 +121,7 @@ class TestDecisionRecordValidation:
     def test_frozen_model_cannot_be_mutated(self):
         r = _make_record()
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             r.outcome = "denied"  # type: ignore
 
@@ -140,6 +141,7 @@ class TestCanonicalJson:
 
     def test_sorted_keys(self):
         import json
+
         r = _make_record()
         data = json.loads(r.to_canonical_json())
         keys = list(data.keys())

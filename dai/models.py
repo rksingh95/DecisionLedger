@@ -262,9 +262,7 @@ class DecisionRecord(BaseModel):
         )
     )
 
-    policy_id: str = Field(
-        description="Identifier of the policy document governing this decision."
-    )
+    policy_id: str = Field(description="Identifier of the policy document governing this decision.")
 
     policy_version: SemVerStr = Field(
         description="Semver version of the policy at decision time. Example: '3.2.1'."
@@ -360,18 +358,14 @@ class DecisionRecord(BaseModel):
     @classmethod
     def validate_semver(cls, v: str, info: Any) -> str:
         if not SEMVER_RE.match(v):
-            raise ValueError(
-                f"{info.field_name} must match semver pattern X.Y.Z, got: {v!r}"
-            )
+            raise ValueError(f"{info.field_name} must match semver pattern X.Y.Z, got: {v!r}")
         return v
 
     @field_validator("ledger_version")
     @classmethod
     def validate_ledger_version(cls, v: str) -> str:
         if v != LEDGER_VERSION:
-            raise ValueError(
-                f"ledger_version must be '{LEDGER_VERSION}', got: {v!r}"
-            )
+            raise ValueError(f"ledger_version must be '{LEDGER_VERSION}', got: {v!r}")
         return v
 
     @field_validator("decision_timestamp", "policy_snapshot_at", "commit_timestamp")
@@ -408,17 +402,13 @@ class DecisionRecord(BaseModel):
     @model_validator(mode="after")
     def validate_override_consistency(self) -> Self:
         if self.override_applied and self.override_by is None:
-            raise ValueError(
-                "override_by must be set when override_applied=True"
-            )
+            raise ValueError("override_by must be set when override_applied=True")
         return self
 
     @model_validator(mode="after")
     def validate_exception_consistency(self) -> Self:
         if self.exception_applied and self.exception_type is None:
-            raise ValueError(
-                "exception_type must be set when exception_applied=True"
-            )
+            raise ValueError("exception_type must be set when exception_applied=True")
         return self
 
     # ── Methods ───────────────────────────────────────────────────────────────

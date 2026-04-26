@@ -6,7 +6,6 @@ Defines the ``decisions`` table used by the DAI server's PostgreSQL backend.
 The table is append-only by design: PostgreSQL RLS rules prevent UPDATE and DELETE.
 """
 
-
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -91,4 +90,3 @@ class ApiKeyORM(Base):
 
     def __repr__(self) -> str:
         return f"<ApiKeyORM agent_id={self.agent_id!r} roles={self.roles!r}>"
-

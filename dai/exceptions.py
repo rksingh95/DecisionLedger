@@ -57,10 +57,7 @@ class BuilderValidationError(DAIException):
 
     def __init__(self, missing_fields: list[str]) -> None:
         self.missing_fields = missing_fields
-        message = (
-            f"Cannot commit decision: missing required fields: "
-            f"{', '.join(missing_fields)}"
-        )
+        message = f"Cannot commit decision: missing required fields: {', '.join(missing_fields)}"
         super().__init__(message)
 
 
@@ -71,9 +68,7 @@ class AlreadyCommittedError(DAIException):
     """
 
     def __init__(self) -> None:
-        super().__init__(
-            "This Decision has already been committed. Create a new Decision."
-        )
+        super().__init__("This Decision has already been committed. Create a new Decision.")
 
 
 class ConfigurationError(DAIException):

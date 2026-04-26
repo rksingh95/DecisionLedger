@@ -90,9 +90,7 @@ class TestDecisionBuilder:
             await d.commit()
 
     def test_string_enum_coercion_agent_type(self, mock_client):
-        d = Decision.begin(
-            "agent", "test", "ref:001", agent_type="autonomous"
-        )
+        d = Decision.begin("agent", "test", "ref:001", agent_type="autonomous")
         assert d._agent_type == AgentType.autonomous
 
     def test_string_enum_coercion_autonomous(self, mock_client):
@@ -101,35 +99,23 @@ class TestDecisionBuilder:
 
     @pytest.mark.asyncio
     async def test_with_override_sets_override_applied(self, mock_client):
-        d = (
-            _full_decision()
-            .with_override("senior-underwriter", ExceptionType.manual_override)
-        )
+        d = _full_decision().with_override("senior-underwriter", ExceptionType.manual_override)
         assert d._override_applied is True
         assert d._override_by == "senior-underwriter"
 
     @pytest.mark.asyncio
     async def test_with_exception_sets_exception_applied(self, mock_client):
-        d = (
-            _full_decision()
-            .with_exception(ExceptionType.conservative_fallback, "low_confidence")
-        )
+        d = _full_decision().with_exception(ExceptionType.conservative_fallback, "low_confidence")
         assert d._exception_applied is True
 
     @pytest.mark.asyncio
     async def test_with_metadata_accumulates(self, mock_client):
-        d = (
-            _full_decision()
-            .with_metadata("region", "EU")
-            .with_metadata("claim_value", "8500")
-        )
+        d = _full_decision().with_metadata("region", "EU").with_metadata("claim_value", "8500")
         assert d._metadata == {"region": "EU", "claim_value": "8500"}
 
     @pytest.mark.asyncio
     async def test_context_manager_auto_commits(self, mock_client):
-        async with Decision.begin(
-            "agent", "test", "ref:001"
-        ) as d:
+        async with Decision.begin("agent", "test", "ref:001") as d:
             d.with_policy("p", "1.0.0")
             d.with_authority("scope", "source")
             d.with_context(["e"], ["d"])
@@ -147,14 +133,19 @@ class TestDecisionBuilder:
     @pytest.mark.asyncio
     async def test_async_commit_happy_path(self, mock_client):
         from dai.client import CommitResult
-        mock_client.commit.return_value = CommitResult(success=True, decision_id="async-123", record_hash="a"*64, latency_ms=1.5)
-        mock_client.get_latest_hash.return_value = "0"*64
 
-        d = (Decision.begin("test-agent", "async-test", "ref")
-             .with_policy("p1", "1.0.0")
-             .with_authority("scope", "source")
-             .with_context(["e"], ["d"])
-             .with_outcome("success", 1.0))
+        mock_client.commit.return_value = CommitResult(
+            success=True, decision_id="async-123", record_hash="a" * 64, latency_ms=1.5
+        )
+        mock_client.get_latest_hash.return_value = "0" * 64
+
+        d = (
+            Decision.begin("test-agent", "async-test", "ref")
+            .with_policy("p1", "1.0.0")
+            .with_authority("scope", "source")
+            .with_context(["e"], ["d"])
+            .with_outcome("success", 1.0)
+        )
         res = await d.commit()
 
         assert mock_client.commit.called
@@ -164,8 +155,11 @@ class TestDecisionBuilder:
     @pytest.mark.asyncio
     async def test_async_context_manager(self, mock_client):
         from dai.client import CommitResult
-        mock_client.commit.return_value = CommitResult(success=True, decision_id="async-ctx-123", record_hash="a"*64, latency_ms=1.5)
-        mock_client.get_latest_hash.return_value = "0"*64
+
+        mock_client.commit.return_value = CommitResult(
+            success=True, decision_id="async-ctx-123", record_hash="a" * 64, latency_ms=1.5
+        )
+        mock_client.get_latest_hash.return_value = "0" * 64
 
         async with Decision.begin("test-agent", "audit", "ref") as d:
             d.with_policy("p1", "1.0.0")
@@ -191,16 +185,17 @@ class TestDecisionBuilder:
 
     def test_context_manager_exception_records_fallback_sync(self, mock_client):
         from dai.client import CommitResult
+
         mock_client.commit.return_value = CommitResult(
-            success=True, decision_id="ctx-123", record_hash="a"*64, latency_ms=1.5
+            success=True, decision_id="ctx-123", record_hash="a" * 64, latency_ms=1.5
         )
-        mock_client.get_latest_hash.return_value = "0"*64
+        mock_client.get_latest_hash.return_value = "0" * 64
 
         with pytest.raises(ValueError), Decision.begin_sync("test-agent", "audit", "ref") as d:
-                d.with_policy("p", "1.0.0")
-                d.with_authority("scope", "source")
-                d.with_context(["e"], ["d"])
-                raise ValueError("agent crashed")
+            d.with_policy("p", "1.0.0")
+            d.with_authority("scope", "source")
+            d.with_context(["e"], ["d"])
+            raise ValueError("agent crashed")
 
         assert mock_client.commit.called
 
@@ -249,6 +244,7 @@ class TestDecisionBuilder:
     async def test_commit_unexpected_error_log_and_continue(self, mock_client):
         """Unexpected exception during commit with log_and_continue returns failure."""
         from dai.config import configure, reset_config
+
         configure(on_error="log_and_continue")
         mock_client.get_latest_hash.side_effect = RuntimeError("unexpected")
 
@@ -262,6 +258,7 @@ class TestDecisionBuilder:
     async def test_commit_unexpected_error_raise_exception(self, mock_client):
         """Unexpected exception during commit with raise_exception re-raises."""
         from dai.config import configure, reset_config
+
         configure(on_error="raise_exception")
         mock_client.get_latest_hash.side_effect = RuntimeError("fatal")
 
@@ -276,8 +273,12 @@ class TestDecisionBuilder:
     async def test_commit_sync_inside_running_loop(self, mock_client):
         """commit_sync falls back to ThreadPoolExecutor when a loop is already running."""
         from dai.client import CommitResult
+
         mock_client.commit.return_value = CommitResult(
-            success=True, decision_id="sync-thread-id", record_hash="a" * 64, latency_ms=1.0,
+            success=True,
+            decision_id="sync-thread-id",
+            record_hash="a" * 64,
+            latency_ms=1.0,
         )
         mock_client.get_latest_hash.return_value = "0" * 64
 
@@ -302,4 +303,3 @@ class TestDecisionBuilder:
         # commit should only have been called once
         assert mock_client.commit.call_count == 1
         assert result is False
-

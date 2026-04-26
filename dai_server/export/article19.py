@@ -6,7 +6,6 @@ Generates compliance exports covering the Article 19 logging requirements
 of the EU AI Act for high-risk AI systems.
 """
 
-
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime

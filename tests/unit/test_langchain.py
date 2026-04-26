@@ -15,11 +15,13 @@ def run_id():
 def callback_handler():
     """Create handler with langchain patched as available throughout the module."""
     import dai.integrations.langchain as lc_module
+
     original = lc_module._LANGCHAIN_AVAILABLE
     lc_module._LANGCHAIN_AVAILABLE = True
     try:
         with patch("dai.client.get_client") as mock_get:
             from dai.client import NoopDAIClient
+
             mock_get.return_value = NoopDAIClient()
             handler = DAICallbackHandler(
                 agent_id="lc-agent",

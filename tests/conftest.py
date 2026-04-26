@@ -34,6 +34,7 @@ def reset_dai_state():
 def dai_config_sqlite(tmp_path):
     """DAIConfig using SQLite backend for test isolation."""
     import dai
+
     db_path = str(tmp_path / "test_dai.db")
     dai.configure(
         backend="sqlite",

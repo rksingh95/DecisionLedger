@@ -4,11 +4,10 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-PYTHON       := .venv/bin/python
-PIP          := .venv/bin/pip
-PYTEST       := .venv/bin/pytest
-RUFF         := .venv/bin/ruff
-MYPY         := .venv/bin/mypy
+# Auto-detect venv: use .venv if it exists, otherwise fall back to system python
+# This makes `make lint` / `make test` work in CI (no .venv) and locally (with .venv).
+PYTHON       := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+PIP          := $(if $(wildcard .venv/bin/pip),.venv/bin/pip,pip)
 DOCKER_COMPOSE := docker compose -f docker/docker-compose.yml
 PORT         ?= 8080
 
@@ -21,7 +20,7 @@ RESET := \033[0m
 # ── Phony targets ─────────────────────────────────────────────────────────────
 .PHONY: help \
         install install-dev install-all \
-        lint format typecheck check \
+        lint format typecheck check pre-commit \
         test test-unit test-integration test-cov test-watch \
         server server-prod \
         migrate migrate-down migrate-create migrate-history \
@@ -71,16 +70,18 @@ help: ## Show this help message
 install: ## Install the SDK in editable mode (basic deps only)
 	$(PIP) install -e "."
 
-install-dev: ## Install SDK + dev + server dependencies (creates .venv automatically)
+install-dev: ## Install SDK + dev + server deps, set up pre-commit hooks (creates .venv)
 	@if [ ! -d .venv ]; then python3.13 -m venv .venv; echo "Created .venv with Python 3.13"; fi
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[dev,server]"
+	$(PYTHON) -m pre_commit install --install-hooks
 	@if [ ! -f .env ]; then cp .env.example .env; echo "Created .env from .env.example — update values as needed"; fi
 	@echo ""
 	@echo "$(GREEN)✓ Ready!$(RESET)"
-	@echo "  Activate venv : source .venv/bin/activate"
-	@echo "  Start server  : make server"
-	@echo "  Run tests     : make test"
+	@echo "  Pre-commit hooks : installed (runs on every git commit)"
+	@echo "  Activate venv    : source .venv/bin/activate"
+	@echo "  Start server     : make server"
+	@echo "  Run tests        : make test"
 
 install-all: ## Install SDK + dev + all optional extras (langchain, opentelemetry, server)
 	@if [ ! -d .venv ]; then python3.13 -m venv .venv; echo "Created .venv with Python 3.13"; fi
@@ -95,40 +96,43 @@ install-all: ## Install SDK + dev + all optional extras (langchain, opentelemetr
 # ─────────────────────────────────────────────────────────────────────────────
 
 lint: ## Run ruff linter (check only, no changes)
-	$(RUFF) check .
+	$(PYTHON) -m ruff check .
 
 format: ## Auto-format code with ruff (modifies files)
-	$(RUFF) format .
-	$(RUFF) check . --fix
+	$(PYTHON) -m ruff format .
+	$(PYTHON) -m ruff check . --fix
 
 typecheck: ## Run mypy strict type-checker on the SDK
-	$(MYPY) dai/
+	$(PYTHON) -m mypy dai/
 
 check: lint typecheck ## Run lint + typecheck together (full CI quality gate)
 	@echo ""
 	@echo "$(GREEN)✓ All checks passed$(RESET)"
+
+pre-commit: ## Run all pre-commit hooks against all files (useful before a PR)
+	$(PYTHON) -m pre_commit run --all-files
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  TESTING
 # ─────────────────────────────────────────────────────────────────────────────
 
 test: ## Run all tests with coverage report (>90% required on SDK)
-	$(PYTEST) tests/unit/ --cov=dai --cov-report=term-missing --cov-fail-under=90
+	$(PYTHON) -m pytest tests/unit/ --cov=dai --cov-report=term-missing --cov-fail-under=90
 
 test-unit: ## Run unit tests only (fast, no DB required)
-	$(PYTEST) tests/unit/ -v
+	$(PYTHON) -m pytest tests/unit/ -v
 
 test-integration: ## Run integration tests (requires a running server / DB)
-	$(PYTEST) tests/integration/ -v
+	$(PYTHON) -m pytest tests/integration/ -v
 
 test-cov: ## Generate HTML coverage report (opens at htmlcov/index.html)
-	$(PYTEST) tests/ --cov=dai --cov=dai_server --cov=cli \
+	$(PYTHON) -m pytest tests/ --cov=dai --cov=dai_server --cov=cli \
 	          --cov-report=html --cov-report=term-missing
 	@echo ""
 	@echo "$(GREEN)Coverage report:$(RESET) htmlcov/index.html"
 
 test-watch: ## Re-run unit tests automatically on file changes (requires pytest-watch)
-	ptw tests/unit/ -- -v
+	$(PYTHON) -m pytest_watch tests/unit/ -- -v
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  SERVER

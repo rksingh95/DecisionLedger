@@ -1,4 +1,5 @@
 """DAI server shared response models."""
+
 from pydantic import BaseModel
 
 

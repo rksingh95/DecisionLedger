@@ -2,7 +2,6 @@
 DAI Server — GET /decisions and related query routes
 """
 
-
 import json
 from datetime import datetime
 
@@ -21,9 +20,7 @@ router = APIRouter()
 async def get_latest_hash(db: AsyncSession = Depends(get_db)) -> dict:
     """Return the record_hash of the most recent decision record."""
     result = await db.execute(
-        select(DecisionORM.record_hash)
-        .order_by(DecisionORM.decision_timestamp.desc())
-        .limit(1)
+        select(DecisionORM.record_hash).order_by(DecisionORM.decision_timestamp.desc()).limit(1)
     )
     row = result.scalar_one_or_none()
     return {"hash": row if row else GENESIS_HASH}

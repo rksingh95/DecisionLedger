@@ -9,7 +9,6 @@ Commands:
     dai init     — Interactive setup wizard
 """
 
-
 import asyncio
 import csv
 import io
@@ -60,6 +59,7 @@ def _parse_dt(value: str) -> datetime:
 
 # ── dai verify ────────────────────────────────────────────────────────────────
 
+
 @app.command("verify")
 def verify(
     from_: str = typer.Option(..., "--from", help="Start of period (ISO8601)"),
@@ -91,6 +91,7 @@ def verify(
         with Progress(SpinnerColumn(), TextColumn("{task.description}"), console=console) as prog:
             prog.add_task("Verifying chain...", total=None)
             import time
+
             t0 = time.monotonic()
             result = asyncio.run(_run())
             elapsed = (time.monotonic() - t0) * 1000
@@ -119,6 +120,7 @@ def verify(
 
 
 # ── dai query ─────────────────────────────────────────────────────────────────
+
 
 @app.command("query")
 def query(
@@ -169,8 +171,16 @@ def query(
             if not records:
                 console.print("No records found.")
                 return
-            fields = ["decision_id", "decision_timestamp", "agent_id",
-                      "decision_type", "outcome", "confidence", "exception_applied", "override_applied"]
+            fields = [
+                "decision_id",
+                "decision_timestamp",
+                "agent_id",
+                "decision_type",
+                "outcome",
+                "confidence",
+                "exception_applied",
+                "override_applied",
+            ]
             writer_io = io.StringIO()
             writer = csv.DictWriter(writer_io, fieldnames=fields, extrasaction="ignore")
             writer.writeheader()
@@ -193,8 +203,10 @@ def query(
             exc_marker = "[yellow]✓[/yellow]" if r.get("exception_applied") else ""
             ovr_marker = "[blue]✓[/blue]" if r.get("override_applied") else ""
             outcome_val = r.get("outcome", "")
-            outcome_styled = f"[green]{outcome_val}[/green]" if outcome_val == "approved" else (
-                f"[red]{outcome_val}[/red]" if outcome_val == "denied" else outcome_val
+            outcome_styled = (
+                f"[green]{outcome_val}[/green]"
+                if outcome_val == "approved"
+                else (f"[red]{outcome_val}[/red]" if outcome_val == "denied" else outcome_val)
             )
             table.add_row(
                 r.get("decision_id", "")[:8] + "…",
@@ -214,6 +226,7 @@ def query(
 
 
 # ── dai export ────────────────────────────────────────────────────────────────
+
 
 @app.command("export")
 def export(
@@ -266,6 +279,7 @@ def export(
 
 # ── dai status ────────────────────────────────────────────────────────────────
 
+
 @app.command("status")
 def status(
     endpoint: str | None = typer.Option(None, "--endpoint"),
@@ -308,6 +322,7 @@ def status(
 
 # ── dai init ──────────────────────────────────────────────────────────────────
 
+
 @app.command("init")
 def init() -> None:
     """Interactive setup wizard — configure DAI and write .env file."""
@@ -334,10 +349,7 @@ def init() -> None:
         console.print("[yellow]⚠ Could not connect (server may not be running yet)[/yellow]")
 
     env_content = (
-        f"DAI_ENDPOINT={ep}\n"
-        f"DAI_API_KEY={key}\n"
-        f"DAI_ENVIRONMENT=production\n"
-        f"DAI_LOG_LEVEL=INFO\n"
+        f"DAI_ENDPOINT={ep}\nDAI_API_KEY={key}\nDAI_ENVIRONMENT=production\nDAI_LOG_LEVEL=INFO\n"
     )
     with open(".env", "w") as f:
         f.write(env_content)

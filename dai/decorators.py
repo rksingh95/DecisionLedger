@@ -30,7 +30,6 @@ The decorator:
 7. On exception: records ``conservative_fallback`` and re-raises.
 """
 
-
 import asyncio
 import functools
 import logging

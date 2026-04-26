@@ -6,7 +6,6 @@ Accepts a fully formed DecisionRecord (hash already computed by SDK),
 validates chain continuity, and persists it to the database.
 """
 
-
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -62,9 +61,7 @@ async def ingest_record(
 
     # 3. Check chain continuity
     latest_result = await db.execute(
-        select(DecisionORM.record_hash)
-        .order_by(DecisionORM.decision_timestamp.desc())
-        .limit(1)
+        select(DecisionORM.record_hash).order_by(DecisionORM.decision_timestamp.desc()).limit(1)
     )
     latest_row = latest_result.scalar_one_or_none()
     expected_previous = latest_row if latest_row else GENESIS_HASH
