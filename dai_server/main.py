@@ -16,6 +16,11 @@ from contextlib import asynccontextmanager
 from datetime import UTC
 from typing import Any
 
+# Load .env file if present (no-op in production where env vars are injected)
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi import Query as FQuery
 from fastapi.middleware.cors import CORSMiddleware

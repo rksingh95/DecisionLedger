@@ -70,17 +70,22 @@ help: ## Show this help message
 install: ## Install the SDK in editable mode (basic deps only)
 	$(PIP) install -e "."
 
-install-dev: ## Install the SDK + all dev/test dependencies (creates .venv automatically)
-	@if [ ! -d .venv ]; then python3.13 -m venv .venv; echo "Created .venv"; fi
+install-dev: ## Install SDK + dev + server dependencies (creates .venv automatically)
+	@if [ ! -d .venv ]; then python3.13 -m venv .venv; echo "Created .venv with Python 3.13"; fi
 	$(PIP) install --upgrade pip
-	$(PIP) install -e ".[dev]"
+	$(PIP) install -e ".[dev,server]"
+	@if [ ! -f .env ]; then cp .env.example .env; echo "Created .env from .env.example — update values as needed"; fi
 	@echo ""
-	@echo "$(GREEN)✓ Ready. Activate with:$(RESET) source .venv/bin/activate"
+	@echo "$(GREEN)✓ Ready!$(RESET)"
+	@echo "  Activate venv : source .venv/bin/activate"
+	@echo "  Start server  : make server"
+	@echo "  Run tests     : make test"
 
-install-all: ## Install the SDK + dev + all optional extras (langchain, opentelemetry)
-	@if [ ! -d .venv ]; then python3.13 -m venv .venv; echo "Created .venv"; fi
+install-all: ## Install SDK + dev + all optional extras (langchain, opentelemetry, server)
+	@if [ ! -d .venv ]; then python3.13 -m venv .venv; echo "Created .venv with Python 3.13"; fi
 	$(PIP) install --upgrade pip
-	$(PIP) install -e ".[dev,langchain,opentelemetry,server]"
+	$(PIP) install -e ".[dev,server,langchain,opentelemetry]"
+	@if [ ! -f .env ]; then cp .env.example .env; echo "Created .env from .env.example — update values as needed"; fi
 	@echo ""
 	@echo "$(GREEN)✓ Ready. Activate with:$(RESET) source .venv/bin/activate"
 
@@ -129,6 +134,10 @@ test-watch: ## Re-run unit tests automatically on file changes (requires pytest-
 # ─────────────────────────────────────────────────────────────────────────────
 
 server: ## Start the API server in dev mode with auto-reload (port $(PORT))
+	@if [ ! -f .env ]; then \
+	  echo "$(BOLD)$(CYAN)Hint:$(RESET) No .env found — copying from .env.example (SQLite mode)"; \
+	  cp .env.example .env; \
+	fi
 	$(PYTHON) -m uvicorn dai_server.main:app --reload --host 0.0.0.0 --port $(PORT)
 
 server-prod: ## Start the API server in production mode via Gunicorn
