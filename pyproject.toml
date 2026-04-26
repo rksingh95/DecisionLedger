@@ -64,10 +64,13 @@ dev = [
 dai = "cli.main:app"
 
 [project.urls]
-Homepage = "https://github.com/Mandate/DecisionLedger"
-Repository = "https://github.com/Mandate/DecisionLedger"
-Documentation = "https://decisionledger.mandate.ai"
-Issues = "https://github.com/Mandate/DecisionLedger/issues"
+Homepage = "https://github.com/rksingh95/DecisionLedger"
+Repository = "https://github.com/rksingh95/DecisionLedger"
+Documentation = "https://github.com/rksingh95/DecisionLedger#readme"
+Issues = "https://github.com/rksingh95/DecisionLedger/issues"
+
+[tool.hatch.build.targets.sdist]
+include = ["/dai", "/dai_server", "/cli", "/README.md", "/LICENSE"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["dai", "dai_server", "cli"]
