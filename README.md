@@ -153,7 +153,7 @@ make test
 ### 2. Install the SDK in your agent
 
 ```bash
-pip install dai-sdk
+pip install decision-ledger-sdk
 
 # Configure
 export DAI_ENDPOINT=http://localhost:8080

@@ -4,7 +4,7 @@ DAI Server — EU AI Act Article 19 PDF Renderer
 
 Generates a professional PDF compliance report from an Article19Export.
 
-Requires: reportlab (install with: pip install dai-sdk[server])
+Requires: reportlab (install with: pip install decision-ledger-sdk[server])
 """
 
 from __future__ import annotations

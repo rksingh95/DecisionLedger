@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "dai-sdk"
+name = "decision-ledger-sdk"
 version = "0.1.0"
 description = "Append-only decision ledger SDK for AI agents in regulated environments"
 readme = "README.md"
