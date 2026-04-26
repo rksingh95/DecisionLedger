@@ -80,6 +80,23 @@ metadata:
 
 <hr/>
 
+## 🤔 Why Not Logs?
+
+Organisations often ask: "We already use Datadog/Splunk/CloudWatch for logging, why do we need a ledger?"
+
+Standard logging infrastructure was built to debug *software systems* (crashes, latency, 500 errors). It was not built to audit *intelligent agents* making business decisions.
+
+| Feature | Standard Logs (ELK/Splunk) | DecisionLedger |
+|---------|-----------------------------|----------------|
+| **Data Structure** | Free-text or loose JSON | Strictly typed, frozen schema |
+| **Mutability** | Can be deleted or altered (e.g., log rotation) | Append-only by design |
+| **Integrity** | Requires external trust | SHA-256 hash-chained; mathematically verifiable |
+| **Domain Semantics** | `{"msg": "approved loan", "id": 123}` | First-class fields for `policy_version`, `confidence`, `evidence_refs` |
+| **Compliance** | Requires custom reporting pipelines | Native EU AI Act Article 19 compliant exports (JSON/PDF) |
+| **Failure Handling** | Exceptions break the flow and are lost | Failures recorded as first-class decision events (`FailureMode`) |
+
+<hr/>
+
 ## 🐳 Quickstart — Docker (Recommended)
 
 The fastest way to get a production-grade stack running locally with PostgreSQL:

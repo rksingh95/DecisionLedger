@@ -29,10 +29,14 @@ from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from dai.authority.failure_modes import FailureMode
+from dai.authority.models import DelegationNode
+
 # ─── Constants ────────────────────────────────────────────────────────────────
 
 GENESIS_HASH: str = "0" * 64
 LEDGER_VERSION: str = "0.1.0"
+SCHEMA_VERSION: str = "0.1.1"  # Bumped for P0.1 primitive hardening
 
 # PEP 695 type aliases (Python 3.12+)
 type SemVerStr = str
@@ -153,6 +157,14 @@ class DecisionRecord(BaseModel):
         description="Semver version of the DAI ledger schema. Currently '0.1.0'.",
     )
 
+    schema_version: str = Field(
+        default=SCHEMA_VERSION,
+        description=(
+            "Schema version for this record's data model. '0.1.1' from P0.1 hardening. "
+            "Used during historical replay to select the correct deserialiser."
+        ),
+    )
+
     # ── Timestamps ────────────────────────────────────────────────────────────
 
     decision_timestamp: datetime = Field(
@@ -213,11 +225,17 @@ class DecisionRecord(BaseModel):
         )
     )
 
-    delegation_source: str = Field(
+    delegation_chain: list[DelegationNode] = Field(
+        default_factory=list,
+        description="Structured chain of authority granting this agent permission.",
+    )
+
+    delegation_source: str | None = Field(
+        default=None,
         description=(
-            "Who or what granted this agent its decision-making authority. "
-            "Example: 'underwriting-team', 'policy:auto-approval-rules-v3'."
-        )
+            "DEPRECATED: Who or what granted this agent its decision-making authority. "
+            "Use delegation_chain instead."
+        ),
     )
 
     human_oversight_required: bool = Field(
@@ -331,6 +349,11 @@ class DecisionRecord(BaseModel):
             "Domain-specific reason code for the exception, validated against "
             "the allowed codes for this decision_type."
         ),
+    )
+
+    failure_mode: FailureMode | None = Field(
+        default=None,
+        description="First-class representation of a failure event if the decision could not be completed normally.",
     )
 
     # ── Extension ─────────────────────────────────────────────────────────────
@@ -462,7 +485,9 @@ class DecisionRecordCreate(BaseModel):
     model_version: str = "unknown"
     deployment_id: str | None = None
     authorized_scope: str
-    delegation_source: str
+    delegation_source: str | None = None
+    delegation_chain: list[DelegationNode] = Field(default_factory=list)
+    schema_version: str = SCHEMA_VERSION
     human_oversight_required: bool = False
     override_applied: bool = False
     override_by: str | None = None
@@ -482,6 +507,7 @@ class DecisionRecordCreate(BaseModel):
     exception_applied: bool = False
     exception_type: ExceptionType | None = None
     exception_reason_code: str | None = None
+    failure_mode: FailureMode | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 
     # Optional: caller may provide decision_timestamp; SDK sets it if not given
@@ -511,14 +537,46 @@ class DecisionRecordCreate(BaseModel):
 
 
 class ChainVerifyResult(BaseModel):
-    """Result of verifying the integrity of a hash chain."""
+    """Result of verifying the integrity of a hash chain.
+
+    P0.1-03: Extended with chain break localisation fields.
+    Callers now get the exact decision_id where the chain broke,
+    and both the expected and actual previous hashes for forensic diagnosis.
+    Pass/fail alone is not sufficient for incident response.
+    """
 
     valid: bool = Field(description="True if the entire chain is intact and untampered.")
     total_records: int = Field(description="Number of records verified.")
+
+    # Legacy field — kept for backward compatibility with P0 callers
     broken_at: str | None = Field(
         default=None,
         description="decision_id of the first record where the chain breaks, if any.",
     )
+
+    # P0.1-03 additions — full localisation
+    first_broken_decision_id: str | None = Field(
+        default=None,
+        description=(
+            "decision_id of the first record where hash verification fails. "
+            "Identical to broken_at; use this field for new callers."
+        ),
+    )
+    expected_previous_hash: str | None = Field(
+        default=None,
+        description=(
+            "The previous_hash value the verifier expected at the break point. "
+            "Compare with actual_previous_hash to confirm tampering vs corruption."
+        ),
+    )
+    actual_previous_hash: str | None = Field(
+        default=None,
+        description=(
+            "The previous_hash value actually stored in the broken record. "
+            "Useful for forensic analysis of where the chain diverged."
+        ),
+    )
+
     verified_at: datetime = Field(description="UTC datetime when verification ran.")
     message: str = Field(description="Human-readable summary of the verification result.")
 

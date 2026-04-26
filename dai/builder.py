@@ -34,6 +34,8 @@ import logging
 from datetime import UTC, datetime
 from typing import Any, Literal, Self
 
+from dai.authority.failure_modes import FailureMode
+from dai.authority.models import DelegationNode
 from dai.client import CommitResult, get_client
 from dai.config import get_config
 from dai.exceptions import AlreadyCommittedError, BuilderValidationError
@@ -76,6 +78,7 @@ class Decision:
         self._clauses_applied: list[str] = []
         self._authorized_scope: str | None = None
         self._delegation_source: str | None = None
+        self._delegation_chain: list[DelegationNode] = []
         self._human_oversight_required: bool = False
         self._override_applied: bool = False
         self._override_by: str | None = None
@@ -89,6 +92,7 @@ class Decision:
         self._exception_applied: bool = False
         self._exception_type: ExceptionType | None = None
         self._exception_reason_code: str | None = None
+        self._failure_mode: FailureMode | None = None
         self._metadata: dict[str, str] = {}
         self._start_time: datetime = datetime.now(UTC)
         self._committed: bool = False
@@ -154,7 +158,7 @@ class Decision:
     def with_authority(
         self,
         authorized_scope: str,
-        delegation_source: str,
+        delegation_source: str | None = None,
         *,
         human_oversight_required: bool = False,
     ) -> Self:
@@ -163,12 +167,22 @@ class Decision:
 
         Args:
             authorized_scope: What this agent was permitted to decide.
-            delegation_source: Who/what granted authority.
+            delegation_source: DEPRECATED. Who/what granted authority. Use with_delegation_chain instead.
             human_oversight_required: True if human review is required before enactment.
         """
         self._authorized_scope = authorized_scope
         self._delegation_source = delegation_source
         self._human_oversight_required = human_oversight_required
+        return self
+
+    def with_delegation_chain(self, chain: list[DelegationNode]) -> Self:
+        """
+        Set the explicit authority chain.
+
+        Args:
+            chain: A list of DelegationNode objects.
+        """
+        self._delegation_chain = chain
         return self
 
     def with_override(
@@ -257,6 +271,13 @@ class Decision:
         self._exception_reason_code = reason_code
         return self
 
+    def with_failure_mode(self, failure_mode: FailureMode) -> Self:
+        """
+        Record a failure mode as a first-class decision event.
+        """
+        self._failure_mode = failure_mode
+        return self
+
     def with_metadata(self, key: str, value: str) -> Self:
         """
         Add a single key-value metadata entry.
@@ -283,8 +304,8 @@ class Decision:
             missing.append("policy_version")
         if not self._authorized_scope:
             missing.append("authorized_scope")
-        if not self._delegation_source:
-            missing.append("delegation_source")
+        if not self._delegation_source and not self._delegation_chain:
+            missing.append("delegation_source or delegation_chain")
         if self._outcome is None:
             missing.append("outcome")
         if self._evidence_refs is None:
@@ -302,7 +323,8 @@ class Decision:
             model_version=self._model_version,
             deployment_id=self._deployment_id,
             authorized_scope=self._authorized_scope or "",
-            delegation_source=self._delegation_source or "",
+            delegation_source=self._delegation_source,
+            delegation_chain=self._delegation_chain,
             human_oversight_required=self._human_oversight_required,
             override_applied=self._override_applied,
             override_by=self._override_by,
@@ -322,6 +344,7 @@ class Decision:
             exception_applied=self._exception_applied,
             exception_type=self._exception_type,
             exception_reason_code=self._exception_reason_code,
+            failure_mode=self._failure_mode,
             metadata=self._metadata,
             decision_timestamp=self._start_time,
         )
